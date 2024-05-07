@@ -49,7 +49,7 @@ RSpec.describe Xlat::Rfc7915 do
     %w(00 00), # flags
     %w(40), # ttl
     %w(11), # protocol
-    %w(00 00), # checksum
+    %w(33 28), # checksum
     %w(c0 00 02 07), # src
     %w(c0 00 02 08), # dst
 
@@ -57,7 +57,7 @@ RSpec.describe Xlat::Rfc7915 do
     %w(c1 5b), # src port
     %w(00 35), # dst port
     %w(00 09), # length
-    %w(7b d5), # checksum
+    %w(0b 3b), # checksum
 
     # payload
     %w(af),
@@ -76,7 +76,7 @@ RSpec.describe Xlat::Rfc7915 do
     %w(c1 5b), # src port
     %w(00 35), # dst port
     %w(00 09), # length
-    %w(1f 9f), # checksum
+    %w(af 04), # checksum
 
     # payload
     %w(af),
@@ -92,7 +92,7 @@ RSpec.describe Xlat::Rfc7915 do
     %w(00 00), # flags
     %w(40), # ttl
     %w(06), # protocol
-    %w(00 00), # checksum
+    %w(33 1b), # checksum
     %w(c0 00 02 07), # src
     %w(c0 00 02 08), # dst
 
@@ -104,7 +104,7 @@ RSpec.describe Xlat::Rfc7915 do
     %w(80), # doffset+rsrvd
     %w(18), # flags
     %w(fb fb), # window size
-    %w(7b c8), # checksum
+    %w(b9 cc), # checksum
     %w(00 00), # urgent pointer
     %w(01),  # tcp option - nop
     %w(01),  # tcp option - nop
@@ -131,7 +131,7 @@ RSpec.describe Xlat::Rfc7915 do
     %w(80), # doffset+rsrvd
     %w(18), # flags
     %w(fb fb), # window size
-    %w(1f 92), # checksum
+    %w(5d 96), # checksum
     %w(00 00), # urgent pointer
     %w(01),  # tcp option - nop
     %w(01),  # tcp option - nop
@@ -149,7 +149,7 @@ RSpec.describe Xlat::Rfc7915 do
     %w(00 00), # flags
     %w(40), # ttl
     %w(01), # protocol
-    %w(00 00), # checksum
+    %w(33 38), # checksum
     %w(c0 00 02 07), # src
     %w(c0 00 02 08), # dst
 
@@ -190,7 +190,7 @@ RSpec.describe Xlat::Rfc7915 do
     %w(00 00), # flags
     %w(40), # ttl
     %w(01), # protocol
-    %w(00 00), # checksum
+    %w(33 1c), # checksum
     %w(c0 00 02 07), # src
     %w(c0 00 02 08), # dst
 
@@ -223,7 +223,7 @@ RSpec.describe Xlat::Rfc7915 do
   TEST_PACKET_IPV6_ICMP_ADMIN = [
     # ipv6
     %w(60 00 00 00), # version, qos, flow label
-    %w(00 39), # payload length (8+40+8+1=39)
+    %w(00 39), # payload length (8+40+8+1=57)
     %w(3a), # next header
     %w(40), # hop limit
     %w(20 01 0d b8 00 60 00 00 00 00 00 00 c0 00 02 07), # src
@@ -231,7 +231,7 @@ RSpec.describe Xlat::Rfc7915 do
 
     # icmp
     %w(01 01), # type=1,code=1 (unreachable admin prohibited)
-    %w(98 bb), # checksum
+    %w(3c 7b), # checksum
     %w(00 00 00 00), # unused
 
     # ipv6
@@ -260,7 +260,7 @@ RSpec.describe Xlat::Rfc7915 do
     %w(00 00), # flags
     %w(40), # ttl
     %w(01), # protocol
-    %w(00 00), # checksum
+    %w(33 1c), # checksum
     %w(c0 00 02 07), # src
     %w(c0 00 02 08), # dst
 
@@ -293,7 +293,7 @@ RSpec.describe Xlat::Rfc7915 do
   TEST_PACKET_IPV6_ICMP_MTU = [
     # ipv6
     %w(60 00 00 00), # version, qos, flow label
-    %w(00 39), # payload length (8+40+8+1=39)
+    %w(00 39), # payload length (8+40+8+1=57)
     %w(3a), # next header
     %w(40), # hop limit
     %w(20 01 0d b8 00 60 00 00 00 00 00 00 c0 00 02 07), # src
@@ -301,7 +301,7 @@ RSpec.describe Xlat::Rfc7915 do
 
     # icmp
     %w(02 00), # type=2,code=0 (packet too big)
-    %w(90 09), # checksum
+    %w(35 a0), # checksum
     %w(ff ff 05 dc), # mtu
 
     # ipv6
@@ -330,7 +330,7 @@ RSpec.describe Xlat::Rfc7915 do
     %w(00 00), # flags
     %w(40), # ttl
     %w(01), # protocol
-    %w(00 00), # checksum
+    %w(33 1c), # checksum
     %w(c0 00 02 07), # src
     %w(c0 00 02 08), # dst
 
@@ -363,7 +363,7 @@ RSpec.describe Xlat::Rfc7915 do
   TEST_PACKET_IPV6_ICMP_POINTER = [
     # ipv6
     %w(60 00 00 00), # version, qos, flow label
-    %w(00 39), # payload length (8+40+8+1=39)
+    %w(00 39), # payload length (8+40+8+1=57)
     %w(3a), # next header
     %w(40), # hop limit
     %w(20 01 0d b8 00 60 00 00 00 00 00 00 c0 00 02 07), # src
@@ -371,7 +371,7 @@ RSpec.describe Xlat::Rfc7915 do
 
     # icmp
     %w(04 00), # type=4,code=0 (erroneous header field)
-    %w(95 dc), # checksum
+    %w(39 73), # checksum
     %w(00 00 00 09), # pointer
 
     # ipv6
@@ -396,11 +396,11 @@ RSpec.describe Xlat::Rfc7915 do
 
   def expect_packet_equal(version, expected_packet_, output, checksum: nil)
     expected_packet = expected_packet_.dup
-    expected_packet.setbyte(version == 4 ? 8 : 7,0x3f) # TTL
 
-    if checksum && version == 4
-      expected_packet.setbyte(10,checksum[0]) # checksum
-      expected_packet.setbyte(11,checksum[1]) # checksum
+    expected_packet.setbyte(version == 4 ? 8 : 7,0x3f) # TTL
+    if version == 4
+      cs = Xlat::Common.string_get16be(expected_packet, 10)
+      Xlat::Common.string_set16be(expected_packet, 10, Xlat::Protocols::Ip.checksum_adjust(cs, -1 * 256)) # TTL
     end
 
     hdrlen = version == 4 ? 20 : 40
@@ -412,6 +412,37 @@ RSpec.describe Xlat::Rfc7915 do
 
     expect(output[0]).to eq(expected_packet[0...hdrlen])
     expect(output[1]).to eq(expected_packet[hdrlen..])
+    assert_checksum(output[0]) if version == 4
+  end
+
+  def assert_l4_checksum(version, data = output[1])
+    protocol = output[0][version == 4 ? 9 : 6]
+
+    pseudo_header_fields = [
+      version == 4 ? output[0][12,4] : output[0][8,16], # l3 src addr
+      version == 4 ? output[0][16,4] : output[0][24,16], # l3 dst addr
+      "\x00".b,
+      protocol, # l3 protocol field
+      "\x00\x00".b.tap { Xlat::Common.string_set16be(_1, 0, output[1].size) }, # l4 size
+    ]
+    case
+    when version == 4 && protocol == "\x01".b # ICMPv4 lack pseudo-header
+      pseudo_header_fields = []
+    end
+    pseudo_header = pseudo_header_fields.join.b
+    raise unless pseudo_header.size%2==0
+    bytes = [
+      pseudo_header,
+      data || "".b,
+    ].join.b
+    #p bytes.chars.map { _1.ord.to_s(16).rjust(2,'0') }.join(' ')
+    assert_checksum(bytes)
+  end
+
+  def assert_checksum(bytes)
+    cs = Xlat::Protocols::Ip.checksum(bytes) 
+    cs = 0 if cs == 0xffff
+    expect(cs).to eq(0)
   end
 
   let(:translator) do
@@ -420,12 +451,37 @@ RSpec.describe Xlat::Rfc7915 do
     end
   end
 
+  describe "meta" do
+    self.class.ancestors.flat_map(&:constants).grep(/TEST_PACKET_/).uniq.each do |test_packet_const_name|
+      version = test_packet_const_name.to_s.include?('IPV4') ? 4 : 6
+      bytes = const_get(test_packet_const_name)
+      describe test_packet_const_name do
+        let(:output) do
+          hdrlen = (version == 4 ? 20 : 40)
+          [
+            bytes[0...hdrlen],
+            bytes[hdrlen..],
+          ]
+        end
+
+        it "has a correct l3 checksum (ipv4)" do
+          assert_checksum(output[0]) if version == 4
+        end if version == 4 
+
+        it "has a correct l4 checksum" do
+          assert_l4_checksum(version)
+        end
+      end
+    end
+  end
+
   describe "#translate_to_ipv4" do
     context "with udp" do
       let!(:output) { translator.translate_to_ipv4(Xlat::Protocols::Ip.parse(TEST_PACKET_IPV6_UDP.dup)) }
 
       it "translates into ipv4" do
-        expect_packet_equal(4, TEST_PACKET_IPV4_UDP, output, checksum: [0x34,0x28])
+        expect_packet_equal(4, TEST_PACKET_IPV4_UDP, output)
+        assert_l4_checksum(4)
       end
     end
 
@@ -433,7 +489,8 @@ RSpec.describe Xlat::Rfc7915 do
       let!(:output) { translator.translate_to_ipv4(Xlat::Protocols::Ip.parse(TEST_PACKET_IPV6_TCP.dup)) }
 
       it "translates into ipv4" do
-        expect_packet_equal(4, TEST_PACKET_IPV4_TCP, output, checksum: [0x34,0x1b])
+        expect_packet_equal(4, TEST_PACKET_IPV4_TCP, output)
+        assert_l4_checksum(4)
       end
     end
 
@@ -441,7 +498,8 @@ RSpec.describe Xlat::Rfc7915 do
       let!(:output) { translator.translate_to_ipv4(Xlat::Protocols::Ip.parse(TEST_PACKET_IPV6_ICMP_ECHO.dup)) }
 
       it "translates into ipv4" do
-        expect_packet_equal(4, TEST_PACKET_IPV4_ICMP_ECHO, output, checksum: [0x34,0x38])
+        expect_packet_equal(4, TEST_PACKET_IPV4_ICMP_ECHO, output)
+        assert_l4_checksum(4)
       end
     end
 
@@ -449,7 +507,8 @@ RSpec.describe Xlat::Rfc7915 do
       let!(:output) { translator.translate_to_ipv4(Xlat::Protocols::Ip.parse(TEST_PACKET_IPV6_ICMP_ADMIN.dup)) }
 
       it "translates into ipv4" do
-        expect_packet_equal(4, TEST_PACKET_IPV4_ICMP_ADMIN, output, checksum: [0x34,0x1c])
+        expect_packet_equal(4, TEST_PACKET_IPV4_ICMP_ADMIN, output)
+        assert_l4_checksum(4)
       end
     end
 
@@ -468,7 +527,8 @@ RSpec.describe Xlat::Rfc7915 do
         ipv4.setbyte(25,29) # rfc4884 length
         Xlat::Common.string_set16be(ipv4,22,Xlat::Protocols::Ip.checksum_adjust(Xlat::Common.string_get16be(ipv4,22), 29))
 
-        expect_packet_equal(4, ipv4, output, checksum: [0x34,0x1c])
+        expect_packet_equal(4, ipv4, output)
+        assert_l4_checksum(4)
       end
     end
 
@@ -476,14 +536,17 @@ RSpec.describe Xlat::Rfc7915 do
       let!(:output) { translator.translate_to_ipv4(Xlat::Protocols::Ip.parse(TEST_PACKET_IPV6_ICMP_MTU.dup)) }
 
       it "translates into ipv4" do
-        expect_packet_equal(4, TEST_PACKET_IPV4_ICMP_MTU, output, checksum: [0x34,0x1c])
+        expect_packet_equal(4, TEST_PACKET_IPV4_ICMP_MTU, output)
+        assert_l4_checksum(4)
       end
     end
+
     context "with icmp err header field" do
       let!(:output) { translator.translate_to_ipv4(Xlat::Protocols::Ip.parse(TEST_PACKET_IPV6_ICMP_POINTER.dup)) }
 
       it "translates into ipv4" do
-        expect_packet_equal(4, TEST_PACKET_IPV4_ICMP_POINTER, output, checksum: [0x34,0x1c])
+        expect_packet_equal(4, TEST_PACKET_IPV4_ICMP_POINTER, output)
+        assert_l4_checksum(4)
       end
     end
   end
