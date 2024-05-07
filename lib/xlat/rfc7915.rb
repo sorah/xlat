@@ -237,18 +237,18 @@ module Xlat
       return unless code_handlers
       type_handler = code_handlers[icmpv6.code] || code_handlers[0x100]
       return unless type_handler
-      new_code,new_type,payload_handler = type_handler
+      new_type,new_code,payload_handler = type_handler
 
       l4_bytes = ipv6_packet.l4_bytes
       l4_bytes_offset = ipv6_packet.l4_bytes_offset
 
       #p l4: [l4_bytes[l4_bytes_offset..]].join.chars.map { _1.ord.to_s(16).rjust(2,'0') }.join(' ')
 
-      cs_delta += (new_code - icmpv6.code) * 256
-      l4_bytes.setbyte(l4_bytes_offset,   new_code)
-      if new_type
-        cs_delta += (new_type - icmpv6.type) * 256
-        l4_bytes.setbyte(l4_bytes_offset+1, new_type)
+      cs_delta += (new_type - icmpv6.type) * 256
+      l4_bytes.setbyte(l4_bytes_offset, new_type)
+      if new_code
+        cs_delta += (new_code - icmpv6.code)
+        l4_bytes.setbyte(l4_bytes_offset+1, new_code)
       end
 
       #p l4: [l4_bytes[l4_bytes_offset..]].join.chars.map { _1.ord.to_s(16).rjust(2,'0') }.join(' ')
