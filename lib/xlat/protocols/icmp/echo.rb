@@ -60,8 +60,8 @@ module Xlat
         end
 
         def apply(cs_delta)
-          string_set16be(@packet.bytes,@packet.l4_start + 4, @is_req ? @src_port : @dest_port)
-          Base.recalculate_checksum(@packet)
+          #string_set16be(@packet.bytes,@packet.l4_start + 4, @is_req ? @src_port : @dest_port)
+          #Base.recalculate_checksum(@packet)
         end
       end
     end

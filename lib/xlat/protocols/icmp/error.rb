@@ -31,28 +31,30 @@ module Xlat
       class Error < Base
         V4_TYPE_DEST_UNREACH = 3
         V4_TYPE_TIME_EXCEEDED = 11
+
         V6_TYPE_DEST_UNREACH = 1
         V6_TYPE_PACKET_TOO_BIG = 2
         V6_TYPE_TIME_EXCEEDED = 3
+        V6_TYPE_PARAMETER_PROBLEM = 4
 
         attr_accessor :original
 
         def _parse
           super
 
-          @original = Ip.parse(@packet.bytes[@packet.l4_start + 8..], true)
+          @original = Ip.parse(@packet.bytes[@packet.l4_start + 8..], icmp_payload: true)
           return nil if @original.nil? || @original.version != @packet.version || @original.l4.nil?
 
           self
         end
 
         def apply(cs_delta)
-          @original.apply
+          # @original.apply
 
-          # overwrite packet image with orig packet being built
-          @packet.bytes[@packet.l4_start + 8..] = @original.bytes
+          # # overwrite packet image with orig packet being built
+          # @packet.bytes[@packet.l4_start + 8..] = @original.bytes
 
-          Base.recalculate_checksum(@packet)
+          # Base.recalculate_checksum(@packet)
         end
       end
     end

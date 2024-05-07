@@ -106,13 +106,15 @@ module Xlat
           true
         end
 
-        def self.apply(bytes, cs_delta)
+        def self.apply(bytes, cs_delta, icmp_payload: false)
           # decrement TTL
-          ttl = bytes.getbyte(8)
-          if ttl > 0
-            ttl -= 1
-            bytes.setbyte(8, ttl)
-            cs_delta -= 0x0100 # checksum computation is performed per 2 octets
+          unless icmp_payload
+            ttl = bytes.getbyte(8)
+            if ttl > 0
+              ttl -= 1
+              bytes.setbyte(8, ttl)
+              cs_delta -= 0x0100 # checksum computation is performed per 2 octets
+            end
           end
 
           checksum = string_get16be(bytes,10)

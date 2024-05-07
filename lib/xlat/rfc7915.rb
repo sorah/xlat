@@ -16,10 +16,11 @@ module Xlat
     MAX_FRAGMENT_ID = 0xffffffff
     IPV4_NULL_BUFFER = ("\x00".b * 20).freeze
     IPV6_NULL_BUFFER = ("\x00".b * 40).freeze
+    EMPTY = ''.b.freeze
 
     # @param source_address_translator [Xlat::AddressTranslation]
     # @param destination_address_translator [Xlat::AddressTranslation]
-    def initialize(source_address_translator:, destination_address_translator:)
+    def initialize(source_address_translator:, destination_address_translator:, for_icmp: false)
       @source_address_translator = source_address_translator
       @destination_address_translator = destination_address_translator
 
@@ -32,17 +33,26 @@ module Xlat
       @output = [nil,nil]
       @new_header_buffer_in_use = false
       return_buffer_ownership
+
+      @inner_icmp = for_icmp ? nil : self.class.new(source_address_translator:, destination_address_translator:, for_icmp: true)
     end
 
-    attr_accessor :next_fragment_identifier
+    attr_reader :next_fragment_identifier
+
+    def next_fragment_identifier=(x)
+      @inner_icmp&.next_fragment_identifier = x
+      @next_fragment_identifier = x
+    end
 
     # Returns array of bytestrings to send as a IPv4 packet. May update original packet content.
     def translate_to_ipv4(ipv6_packet)
       raise BufferInUse if @new_header_buffer_in_use
       raise ArgumentError unless ipv6_packet.version.to_i == 6
+      icmp_payload = @inner_icmp.nil?
       @new_header_buffer_in_use = true
       new_header_buffer = @ipv4_new_header_buffer
       ipv6_bytes = ipv6_packet.bytes
+
       cs_delta = 0 # delta for incremental update of upper-layer checksum fields
 
       # Version = 4, IHL = 5
@@ -66,19 +76,25 @@ module Xlat
       new_header_buffer.setbyte(9, ipv6_packet.proto)
 
       # Source and Destination address
-      cs_delta += @source_address_translator.translate_address_to_ipv4(ipv6_bytes[8,16], new_header_buffer, 12) or return return_buffer_ownership()
-      cs_delta += @destination_address_translator.translate_address_to_ipv4(ipv6_bytes[24,16], new_header_buffer, 16) or return return_buffer_ownership()
+      cs_delta_a = @source_address_translator.translate_address_to_ipv4(ipv6_bytes[8,16], new_header_buffer, 12) or return return_buffer_ownership()
+      cs_delta_b = @destination_address_translator.translate_address_to_ipv4(ipv6_bytes[24,16], new_header_buffer, 16) or return return_buffer_ownership()
+      cs_delta += cs_delta_a + cs_delta_b
 
       # TODO: DF bit
-      # TODO: ICMPv6 => ICMPv4
+
+      if !icmp_payload && ipv6_packet.proto == 58 # icmpv6
+        icmp_result = translate_icmpv6_to_icmpv4(ipv6_packet, new_header_buffer)
+        return return_buffer_ownership() unless icmp_result
+        cs_delta += icmp_result
+      end
 
       #p ipv6_bytes.chars.map { _1.ord.to_s(16).rjust(2,'0') }.join(' ')
       #p new_header_buffer.chars.map { _1.ord.to_s(16).rjust(2,'0') }.join(' ')
 
       ipv4_packet = Protocols::Ip.new(new_header_buffer, proto: Protocols::Ip::Ipv4, l4_bytes: ipv6_packet.l4_bytes, l4_bytes_offset: ipv6_packet.l4_bytes_offset)
-      ipv4_packet._parse(false)
+      ipv4_packet._parse(icmp_payload)
       ipv4_packet.cs_delta = cs_delta
-      ipv4_packet.apply_changes
+      ipv4_packet.apply_changes(icmp_payload:)
 
       # Recompute checksum (this must be performed after Ip#apply_changes as it updates ipv4 checksum field along with l4 checksum field using delta,
       # while new_header_buffer has no prior checksum value)
@@ -88,6 +104,7 @@ module Xlat
 
       @output[0] = new_header_buffer
       @output[1] = ipv4_packet.l4_bytes[ipv4_packet.l4_bytes_offset..]
+      @output[2] = cs_delta if icmp_payload
       @output
     end
 
@@ -95,6 +112,7 @@ module Xlat
     def translate_to_ipv6(ipv4_packet)
       raise BufferInUse if @new_header_buffer_in_use
       raise ArgumentError unless ipv4_packet.version.to_i == 4
+      icmp_payload = @inner_icmp.nil?
       # TODO: support fragment extension and esp
       # TODO: ignore extension
       @new_header_buffer_in_use = true
@@ -120,18 +138,20 @@ module Xlat
       new_header_buffer.setbyte(7, ipv4_bytes.getbyte(8))
 
       # Source and Destination address
-      cs_delta += @source_address_translator.translate_address_to_ipv6(ipv4_bytes[12,4], new_header_buffer, 8) or return return_buffer_ownership()
-      cs_delta += @destination_address_translator.translate_address_to_ipv6(ipv4_bytes[16,4], new_header_buffer, 24) or return return_buffer_ownership()
+      cs_delta_a = @source_address_translator.translate_address_to_ipv6(ipv4_bytes[12,4], new_header_buffer, 8) or return return_buffer_ownership()
+      cs_delta_b = @destination_address_translator.translate_address_to_ipv6(ipv4_bytes[16,4], new_header_buffer, 24) or return return_buffer_ownership()
+      cs_delta += cs_delta_a + cs_delta_b
 
+      # TODO: generate udp checksum option (section 4.5.)
       # TODO: ICMPv4 => ICMPv6
-
       ipv6_packet = Protocols::Ip.new(new_header_buffer, proto: Protocols::Ip::Ipv6, l4_bytes: ipv4_packet.l4_bytes, l4_bytes_offset: ipv4_packet.l4_bytes_offset)
-      ipv6_packet._parse(false)
+      ipv6_packet._parse(icmp_payload)
       ipv6_packet.cs_delta = cs_delta # for upper-layer checksum incremental update
-      ipv6_packet.apply_changes
+      ipv6_packet.apply_changes(icmp_payload:)
 
       @output[0] = new_header_buffer
       @output[1] = ipv6_packet.l4_bytes[ipv6_packet.l4_bytes_offset..]
+      @output[2] = cs_delta if icmp_payload
       @output
     end
 
@@ -141,16 +161,181 @@ module Xlat
       @ipv6_new_header_buffer[0, 40] = IPV6_NULL_BUFFER
       @output[0] = nil
       @output[1] = nil
+      if @inner_icmp
+        @output[2] = nil
+        @inner_icmp.return_buffer_ownership
+      end
       nil
     end
 
-    private
-
-    def make_fragment_id
+    private def make_fragment_id
       id = @next_fragment_identifier
       @next_fragment_identifier = @next_fragment_identifier.succ & MAX_FRAGMENT_ID
       id
     end
+
+    gen_type_map = ->(h) do
+      ary = Array.new(0xff.succ)
+      h.each_key do |(type,_)|
+        tary = ary[type] = Array.new(0xff.succ.succ)
+        h.each do |(type2,code),res|
+          next unless type == type2
+          tary[code || 0x100] = res
+        end
+        tary.freeze
+      end
+      ary.freeze
+    end
+
+    ICMPV6V4_TYPE_MAP = gen_type_map[{
+      [1,0] => [3,1,:error_payload_rfc4884], # destination unreachable, no route to destination
+      [1,1] => [3,10,:error_payload_rfc4884], # destination unreachable, admin prohibited
+      [1,2] => [3,1,:error_payload_rfc4884], # destination unreachable, beyond scope of source address
+      [1,3] => [3,1,:error_payload_rfc4884], # destination unreachable, address unreachable
+      [1,4] => [3,3,:error_payload_rfc4884], # destination unreachable, port unreachable
+
+      [2,nil] => [3,4,:mtu], # packet too big
+
+      [3,nil] => [11,nil,:error_payload_rfc4884], # time exceeded (code unchanged)
+
+      [4,0] => [12,0,:pointer],  # parameter problem, err header field
+      [4,1] => [3,2,:error_payload], # parameter problem, unrecognised next header type
+
+      [128,0] => [8,0], # echo request
+      [129,0] => [0,0], # echo reply
+    }]
+
+    # https://datatracker.ietf.org/doc/html/rfc7915#section-5.2 Figure 6
+    ICMPV6_POINTER_MAP = {
+      0 => 0,
+      1 => 1,
+      4 => 2,
+      5 => 2,
+      6 => 9,
+      7 => 8,
+      8..23 => 12,
+      24..39 => 16,
+    }.then do |map|
+      ary = Array.new(40)
+      map.each do |from_,to|
+        from = from_.is_a?(Integer) ? from_..from_ : from_
+        from.each do |f|
+          ary[f] = to
+        end
+      end
+      ary
+    end
+
+    private def translate_icmpv6_to_icmpv4(ipv6_packet, new_header_buffer)
+      raise unless @inner_icmp
+      icmpv6 = ipv6_packet.l4
+      raise unless icmpv6
+      outer_cs_delta = 0
+      cs_delta = 0
+
+      code_handlers = ICMPV6V4_TYPE_MAP[icmpv6.type]
+      return unless code_handlers
+      type_handler = code_handlers[icmpv6.code] || code_handlers[0x100]
+      return unless type_handler
+      new_code,new_type,payload_handler = type_handler
+
+      l4_bytes = ipv6_packet.l4_bytes
+      l4_bytes_offset = ipv6_packet.l4_bytes_offset
+
+      #p l4: [l4_bytes[l4_bytes_offset..]].join.chars.map { _1.ord.to_s(16).rjust(2,'0') }.join(' ')
+
+      cs_delta += (new_code - icmpv6.code) * 256
+      l4_bytes.setbyte(l4_bytes_offset,   new_code)
+      if new_type
+        cs_delta += (new_type - icmpv6.type) * 256
+        l4_bytes.setbyte(l4_bytes_offset+1, new_type)
+      end
+
+      #p l4: [l4_bytes[l4_bytes_offset..]].join.chars.map { _1.ord.to_s(16).rjust(2,'0') }.join(' ')
+
+      translate_payload = false
+      l4_length_changed = false
+
+      case payload_handler
+      when nil
+        # do nothing
+      when :error_payload
+        translate_payload = true
+      when :error_payload_rfc4884
+        translate_payload = :error_payload_rfc4884
+      when :mtu
+        translate_payload = true
+        # https://datatracker.ietf.org/doc/html/rfc1191#section-4
+        mtu = string_get16be(l4_bytes, l4_bytes_offset+6)
+        l4_bytes.setbyte(l4_bytes_offset+4,0)
+        l4_bytes.setbyte(l4_bytes_offset+5,0)
+        string_set16be(l4_bytes,l4_bytes_offset+6,mtu-20) # FIXME: not complete implementation
+      when :pointer
+        translate_payload = true
+        ptr = l4_bytes.getbyte(l4_bytes_offset+7)
+        newptr = ICMPV6_POINTER_MAP[ptr]
+        return unless newptr
+        l4_bytes.setbyte(l4_bytes_offset+4,newptr)
+        l4_bytes.setbyte(l4_bytes_offset+5,0)
+        l4_bytes.setbyte(l4_bytes_offset+6,0)
+        l4_bytes.setbyte(l4_bytes_offset+7,0)
+      else
+        raise
+      end
+
+      if translate_payload
+        payload_offset = l4_bytes_offset+8
+        payload = Xlat::Protocols::Ip.parse(l4_bytes[payload_offset..])
+        payload_translated = payload && @inner_icmp.translate_to_ipv4(payload)
+        if payload_translated
+          new_header_size = payload_translated[0].size
+          l4_bytes[payload_offset, new_header_size] = payload_translated[0]
+          l4_bytes[payload_offset+new_header_size..] = payload_translated[1]
+
+          l4_length_changed = 8 + new_header_size + payload_translated[1].size
+          if translate_payload == :error_payload_rfc4884 && l4_bytes.getbyte(l4_bytes_offset+4) > 0
+            l4_bytes.setbyte(l4_bytes_offset+4, 0)
+            l4_bytes.setbyte(l4_bytes_offset+5, l4_length_changed-8)
+          end
+        end
+
+        # TODO: length limit
+
+        # Force recalculation of ICMP checksum
+        l4_bytes.setbyte(l4_bytes_offset+2,0)
+        l4_bytes.setbyte(l4_bytes_offset+3,0)
+        cksum = Protocols::Ip.checksum(l4_bytes, l4_bytes_offset)
+        string_set16be(l4_bytes, l4_bytes_offset+2, cksum)
+
+      else
+        # For incremental checksum update, remove pseudo header from ICMP checksum
+        upper_layer_packet_length = l4_bytes.bytes.size - l4_bytes_offset
+        cs_delta -= ipv6_packet.tuple.unpack('n*').sum + upper_layer_packet_length + 58
+
+        checksum = string_get16be(l4_bytes, l4_bytes_offset+2)
+        checksum = Protocols::Ip.checksum_adjust(checksum, cs_delta)
+        checksum = 65535 if checksum == 0
+        checksum = string_set16be(l4_bytes, l4_bytes_offset+2, checksum)
+      end
+
+      ### NOTE: this method must not return nil beyond this line - altering outer l3 header ###
+
+      if l4_length_changed
+        # Update Outer IPv4 Total Length Field
+        new_total_length = 20+l4_length_changed
+        #p act: [new_header_buffer.size,l4_bytes[l4_bytes_offset..].size].sum, new_total_length:, present_total_length: string_get16be(new_header_buffer,2)
+        outer_cs_delta += new_total_length - string_get16be(new_header_buffer,2)
+        string_set16be(new_header_buffer,2,new_total_length)
+      end
+
+      new_header_buffer.setbyte(9, 1) # protocol=icmpv4
+      outer_cs_delta += -57 # 58(icmpv6)-1(icmpv4)
+
+      #p l4: [l4_bytes[l4_bytes_offset..]].join.chars.map { _1.ord.to_s(16).rjust(2,'0') }.join(' ')
+      outer_cs_delta
+    end
+
+
   end
 end
   

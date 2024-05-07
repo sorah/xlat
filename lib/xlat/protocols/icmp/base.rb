@@ -66,8 +66,8 @@ module Xlat
 
         def self.recalculate_checksum(packet)
           string_set16be(packet.bytes,packet.l4_start + 2, 0)
-          checksum = IP.checksum(packet.bytes, packet.l4_start)
-          checksum = IP.checksum_adjust(checksum, packet.version.icmp_cs_delta(packet))
+          checksum = Ip.checksum(packet.bytes, packet.l4_start)
+          checksum = Ip.checksum_adjust(checksum, packet.version.icmp_cs_delta(packet)) # pseudo header
           string_set16be(packet.bytes,packet.l4_start + 2, checksum)
         end
       end

@@ -91,10 +91,10 @@ module Xlat
             Icmp::Echo.new(packet, true)
           when Icmp::Echo::V6_TYPE_REPLY
             Icmp::Echo.new(packet, true)
-          when Icmp::Error::V6_TYPE_DEST_UNREACH, Icmp::Error::V6_TYPE_PACKET_TOO_BIG, Icmp::Error::V6_TYPE_TIME_EXCEEDED
+          when Icmp::Error::V6_TYPE_DEST_UNREACH, Icmp::Error::V6_TYPE_PACKET_TOO_BIG, Icmp::Error::V6_TYPE_TIME_EXCEEDED, Icmp::Error::V6_TYPE_PARAMETER_PROBLEM
             Icmp::Error.new(packet)
           else
-            Icmp.new(packet)
+            Icmp::Base.new(packet)
           end
         end
 
@@ -114,12 +114,14 @@ module Xlat
           true
         end
 
-        def self.apply(bytes, cs_delta)
+        def self.apply(bytes, cs_delta, icmp_payload: false)
           # decrement hop limit
-          hop_limit = bytes.getbyte(7)
-          if hop_limit > 0
-            hop_limit -= 1
-            bytes.setbyte(7, hop_limit)
+          unless icmp_payload
+            hop_limit = bytes.getbyte(7)
+            if hop_limit > 0
+              hop_limit -= 1
+              bytes.setbyte(7, hop_limit)
+            end
           end
         end
       end

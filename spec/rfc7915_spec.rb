@@ -141,6 +141,259 @@ RSpec.describe Xlat::Rfc7915 do
     %w(af),
   ].flatten.map { _1.to_i(16).chr }.join.b.freeze
 
+  TEST_PACKET_IPV4_ICMP_ECHO = [
+    # ipv4
+    %w(45 00),
+    %w(00 1d), # total length (20+8+1=29)
+    %w(c3 98), # identification
+    %w(00 00), # flags
+    %w(40), # ttl
+    %w(01), # protocol
+    %w(00 00), # checksum
+    %w(c0 00 02 07), # src
+    %w(c0 00 02 08), # dst
+
+    # icmp
+    %w(08 00), # type=8,code=0 (echo request)
+    %w(8a fd), # checksum
+    %w(12 34), # identifier
+    %w(ab cd), # sequence number
+
+    # payload
+    %w(af),
+  ].flatten.map { _1.to_i(16).chr }.join.b.freeze
+
+  TEST_PACKET_IPV6_ICMP_ECHO = [
+    # ipv6
+    %w(60 00 00 00), # version, qos, flow label
+    %w(00 09), # payload length (8+1=9)
+    %w(3a), # next header
+    %w(40), # hop limit
+    %w(20 01 0d b8 00 60 00 00 00 00 00 00 c0 00 02 07), # src
+    %w(20 01 0d b8 00 64 00 00 00 00 00 00 c0 00 02 08), # dst 
+
+    # icmp
+    %w(80 00), # type=128,code=0 (echo request)
+    %w(32 73), # checksum
+    %w(12 34), # identifier
+    %w(ab cd), # sequence number
+
+    # payload
+    %w(af),
+  ].flatten.map { _1.to_i(16).chr }.join.b.freeze
+
+  TEST_PACKET_IPV4_ICMP_ADMIN = [
+    # ipv4
+    %w(45 00),
+    %w(00 39), # total length (20+8+20+8+1=57)
+    %w(c3 98), # identification
+    %w(00 00), # flags
+    %w(40), # ttl
+    %w(01), # protocol
+    %w(00 00), # checksum
+    %w(c0 00 02 07), # src
+    %w(c0 00 02 08), # dst
+
+    # icmp
+    %w(03 0a), # type=3,code=10 (unreachable admin prohibited)
+    %w(10 7c), # checksum
+    %w(00 00 00 00), # unused
+
+    # payload ipv4
+    %w(45 00),
+    %w(00 1d), # total length (20+8+1=29)
+    %w(c3 98), # identification
+    %w(00 00), # flags
+    %w(40), # ttl
+    %w(11), # protocol
+    %w(33 32), # checksum
+    %w(c0 00 02 02), # src
+    %w(c0 00 02 03), # dst
+
+    # payload udp
+    %w(c1 5b), # src port
+    %w(00 35), # dst port
+    %w(00 09), # length
+    %w(7b df), # checksum
+
+    # payload
+    %w(af),
+  ].flatten.map { _1.to_i(16).chr }.join.b.freeze
+
+  TEST_PACKET_IPV6_ICMP_ADMIN = [
+    # ipv6
+    %w(60 00 00 00), # version, qos, flow label
+    %w(00 39), # payload length (8+40+8+1=39)
+    %w(3a), # next header
+    %w(40), # hop limit
+    %w(20 01 0d b8 00 60 00 00 00 00 00 00 c0 00 02 07), # src
+    %w(20 01 0d b8 00 64 00 00 00 00 00 00 c0 00 02 08), # dst 
+
+    # icmp
+    %w(01 01), # type=1,code=1 (unreachable admin prohibited)
+    %w(98 bb), # checksum
+    %w(00 00 00 00), # unused
+
+    # ipv6
+    %w(60 00 00 00), # version, qos, flow label
+    %w(00 09), # payload length (8+1=9)
+    %w(11), # next header
+    %w(40), # hop limit
+    %w(00 64 ff 9b 00 01 ff fe 00 00 00 00 c0 00 02 02), # src
+    %w(00 64 ff 9b 00 00 00 00 00 00 00 00 c0 00 02 03), # dst 
+
+    # udp
+    %w(c1 5b), # src port
+    %w(00 35), # dst port
+    %w(00 09), # length
+    %w(7b df), # checksum
+
+    # payload
+    %w(af),
+  ].flatten.map { _1.to_i(16).chr }.join.b.freeze
+
+  TEST_PACKET_IPV4_ICMP_MTU = [
+    # ipv4
+    %w(45 00),
+    %w(00 39), # total length (20+8+20+8+1=57)
+    %w(c3 98), # identification
+    %w(00 00), # flags
+    %w(40), # ttl
+    %w(01), # protocol
+    %w(00 00), # checksum
+    %w(c0 00 02 07), # src
+    %w(c0 00 02 08), # dst
+
+    # icmp
+    %w(03 04), # type=3,code=4 (packet too big)
+    %w(0a ba), # checksum
+    %w(00 00 05 c8), # mtu
+
+    # payload ipv4
+    %w(45 00),
+    %w(00 1d), # total length (20+8+1=29)
+    %w(c3 98), # identification
+    %w(00 00), # flags
+    %w(40), # ttl
+    %w(11), # protocol
+    %w(33 32), # checksum
+    %w(c0 00 02 02), # src
+    %w(c0 00 02 03), # dst
+
+    # payload udp
+    %w(c1 5b), # src port
+    %w(00 35), # dst port
+    %w(00 09), # length
+    %w(7b df), # checksum
+
+    # payload
+    %w(af),
+  ].flatten.map { _1.to_i(16).chr }.join.b.freeze
+
+  TEST_PACKET_IPV6_ICMP_MTU = [
+    # ipv6
+    %w(60 00 00 00), # version, qos, flow label
+    %w(00 39), # payload length (8+40+8+1=39)
+    %w(3a), # next header
+    %w(40), # hop limit
+    %w(20 01 0d b8 00 60 00 00 00 00 00 00 c0 00 02 07), # src
+    %w(20 01 0d b8 00 64 00 00 00 00 00 00 c0 00 02 08), # dst 
+
+    # icmp
+    %w(02 00), # type=2,code=0 (packet too big)
+    %w(90 09), # checksum
+    %w(ff ff 05 dc), # mtu
+
+    # ipv6
+    %w(60 00 00 00), # version, qos, flow label
+    %w(00 09), # payload length (8+1=9)
+    %w(11), # next header
+    %w(40), # hop limit
+    %w(00 64 ff 9b 00 01 ff fe 00 00 00 00 c0 00 02 02), # src
+    %w(00 64 ff 9b 00 00 00 00 00 00 00 00 c0 00 02 03), # dst 
+
+    # udp
+    %w(c1 5b), # src port
+    %w(00 35), # dst port
+    %w(00 09), # length
+    %w(7b df), # checksum
+
+    # payload
+    %w(af),
+  ].flatten.map { _1.to_i(16).chr }.join.b.freeze
+
+  TEST_PACKET_IPV4_ICMP_POINTER = [
+    # ipv4
+    %w(45 00),
+    %w(00 39), # total length (20+8+20+8+1=57)
+    %w(c3 98), # identification
+    %w(00 00), # flags
+    %w(40), # ttl
+    %w(01), # protocol
+    %w(00 00), # checksum
+    %w(c0 00 02 07), # src
+    %w(c0 00 02 08), # dst
+
+    # icmp
+    %w(0c 00), # type=12,code=0 (parameter problem)
+    %w(fb 85), # checksum
+    %w(0c 00 00 00), # pointer
+
+    # payload ipv4
+    %w(45 00),
+    %w(00 1d), # total length (20+8+1=29)
+    %w(c3 98), # identification
+    %w(00 00), # flags
+    %w(40), # ttl
+    %w(11), # protocol
+    %w(33 32), # checksum
+    %w(c0 00 02 02), # src
+    %w(c0 00 02 03), # dst
+
+    # payload udp
+    %w(c1 5b), # src port
+    %w(00 35), # dst port
+    %w(00 09), # length
+    %w(7b df), # checksum
+
+    # payload
+    %w(af),
+  ].flatten.map { _1.to_i(16).chr }.join.b.freeze
+
+  TEST_PACKET_IPV6_ICMP_POINTER = [
+    # ipv6
+    %w(60 00 00 00), # version, qos, flow label
+    %w(00 39), # payload length (8+40+8+1=39)
+    %w(3a), # next header
+    %w(40), # hop limit
+    %w(20 01 0d b8 00 60 00 00 00 00 00 00 c0 00 02 07), # src
+    %w(20 01 0d b8 00 64 00 00 00 00 00 00 c0 00 02 08), # dst 
+
+    # icmp
+    %w(04 00), # type=4,code=0 (erroneous header field)
+    %w(95 dc), # checksum
+    %w(00 00 00 09), # pointer
+
+    # ipv6
+    %w(60 00 00 00), # version, qos, flow label
+    %w(00 09), # payload length (8+1=9)
+    %w(11), # next header
+    %w(40), # hop limit
+    %w(00 64 ff 9b 00 01 ff fe 00 00 00 00 c0 00 02 02), # src
+    %w(00 64 ff 9b 00 00 00 00 00 00 00 00 c0 00 02 03), # dst 
+
+    # udp
+    %w(c1 5b), # src port
+    %w(00 35), # dst port
+    %w(00 09), # length
+    %w(7b df), # checksum
+
+    # payload
+    %w(af),
+  ].flatten.map { _1.to_i(16).chr }.join.b.freeze
+
+
+
   def expect_packet_equal(version, expected_packet_, output, checksum: nil)
     expected_packet = expected_packet_.dup
     expected_packet.setbyte(version == 4 ? 8 : 7,0x3f) # TTL
@@ -150,10 +403,13 @@ RSpec.describe Xlat::Rfc7915 do
       expected_packet.setbyte(11,checksum[1]) # checksum
     end
 
-    #p expected_packet[...40].chars.map { _1.ord.to_s(16).rjust(2,'0') }.join(' ')
-    #p [output[0]].join.chars.map { _1.ord.to_s(16).rjust(2,'0') }.join(' ')
-
     hdrlen = version == 4 ? 20 : 40
+
+    #p l3expected: expected_packet[...hdrlen].chars.map { _1.ord.to_s(16).rjust(2,'0') }.join(' ')
+    #p l3actual__: [output[0]].join.chars.map { _1.ord.to_s(16).rjust(2,'0') }.join(' ')
+    #p l4expected: expected_packet[hdrlen..].chars.map { _1.ord.to_s(16).rjust(2,'0') }.join(' ')
+    #p l4actual__: [output[1]].join.chars.map { _1.ord.to_s(16).rjust(2,'0') }.join(' ')
+
     expect(output[0]).to eq(expected_packet[0...hdrlen])
     expect(output[1]).to eq(expected_packet[hdrlen..])
   end
@@ -181,6 +437,55 @@ RSpec.describe Xlat::Rfc7915 do
       end
     end
 
+    context "with icmp echo" do
+      let!(:output) { translator.translate_to_ipv4(Xlat::Protocols::Ip.parse(TEST_PACKET_IPV6_ICMP_ECHO.dup)) }
+
+      it "translates into ipv4" do
+        expect_packet_equal(4, TEST_PACKET_IPV4_ICMP_ECHO, output, checksum: [0x34,0x38])
+      end
+    end
+
+    context "with icmp payload" do
+      let!(:output) { translator.translate_to_ipv4(Xlat::Protocols::Ip.parse(TEST_PACKET_IPV6_ICMP_ADMIN.dup)) }
+
+      it "translates into ipv4" do
+        expect_packet_equal(4, TEST_PACKET_IPV4_ICMP_ADMIN, output, checksum: [0x34,0x1c])
+      end
+    end
+
+    context "with icmp payload + RFC 4884" do
+      let!(:output) do
+        ipv6 = TEST_PACKET_IPV6_ICMP_ADMIN.dup
+        ipv6.setbyte(44,49) # rfc4884 length
+        Xlat::Common.string_set16be(ipv6,42,Xlat::Protocols::Ip.checksum_adjust(Xlat::Common.string_get16be(ipv6,42), 49 << 4))
+
+
+        translator.translate_to_ipv4(Xlat::Protocols::Ip.parse(ipv6))
+      end
+
+      it "translates into ipv4" do
+        ipv4 = TEST_PACKET_IPV4_ICMP_ADMIN.dup
+        ipv4.setbyte(25,29) # rfc4884 length
+        Xlat::Common.string_set16be(ipv4,22,Xlat::Protocols::Ip.checksum_adjust(Xlat::Common.string_get16be(ipv4,22), 29))
+
+        expect_packet_equal(4, ipv4, output, checksum: [0x34,0x1c])
+      end
+    end
+
+    context "with icmp mtu" do
+      let!(:output) { translator.translate_to_ipv4(Xlat::Protocols::Ip.parse(TEST_PACKET_IPV6_ICMP_MTU.dup)) }
+
+      it "translates into ipv4" do
+        expect_packet_equal(4, TEST_PACKET_IPV4_ICMP_MTU, output, checksum: [0x34,0x1c])
+      end
+    end
+    context "with icmp err header field" do
+      let!(:output) { translator.translate_to_ipv4(Xlat::Protocols::Ip.parse(TEST_PACKET_IPV6_ICMP_POINTER.dup)) }
+
+      it "translates into ipv4" do
+        expect_packet_equal(4, TEST_PACKET_IPV4_ICMP_POINTER, output, checksum: [0x34,0x1c])
+      end
+    end
   end
 
   describe "#translate_to_ipv6" do
@@ -199,8 +504,6 @@ RSpec.describe Xlat::Rfc7915 do
         expect_packet_equal(6, TEST_PACKET_IPV6_TCP, output)
       end
     end
-
-
   end
 
 end

@@ -37,5 +37,9 @@ module Xlat
       str.setbyte(str, off, src.getbyte(off))
       str.setbyte(str, off+1, src.getbyte(off+1))
     end
+
+    class << self
+      include Xlat::Common
+    end
   end
 end
