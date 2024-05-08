@@ -102,6 +102,9 @@ module Xlat
       cksum = Protocols::Ip.checksum(new_header_buffer)
       string_set16be(new_header_buffer, 10, cksum)
 
+      # TODO: Section 5.4. Generation of ICMPv6 Error Messages
+      # TODO: Section 5.1.1. IPv6 Fragment Processing
+
       @output[0] = new_header_buffer
       @output[1] = ipv4_packet.l4_bytes[ipv4_packet.l4_bytes_offset..]
       @output[2] = cs_delta if icmp_payload
@@ -154,6 +157,8 @@ module Xlat
       ipv6_packet._parse(icmp_payload)
       ipv6_packet.cs_delta = cs_delta # for upper-layer checksum incremental update
       ipv6_packet.apply_changes(icmp_payload:)
+
+      # TODO: Section 4.4.  Generation of ICMPv4 Error Message
 
       @output[0] = new_header_buffer
       @output[1] = ipv6_packet.l4_bytes[ipv6_packet.l4_bytes_offset..]
