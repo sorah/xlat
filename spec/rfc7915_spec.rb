@@ -394,6 +394,67 @@ RSpec.describe Xlat::Rfc7915 do
 
 
 
+  TEST_PACKET_IPV6_ETHERIP = [
+    # ipv6
+    %w(60 00 00 00), # version, qos, flow label
+    %w(00 41), # payload length (2+14+40+8+1=65)
+    %w(61), # next header
+    %w(40), # hop limit
+    %w(20 01 0d b8 00 60 00 00 00 00 00 00 c0 00 02 07), # src
+    %w(20 01 0d b8 00 64 00 00 00 00 00 00 c0 00 02 08), # dst 
+
+    # etherip
+    %w(30 00),
+    # ethernet
+    %w(00 15 5d 83 05 09 30 7c 5e 10 75 01 86 dd),
+    # ipv6
+    %w(60 00 00 00), # version, qos, flow label
+    %w(00 09), # payload length (8+1=9)
+    %w(3a), # next header
+    %w(40), # hop limit
+    %w(20 01 0d b8 00 00 00 00 00 00 00 00 00 00 00 0a), # src
+    %w(20 01 0d b8 00 00 00 00 00 00 00 00 00 00 00 0b), # dst 
+    # icmp
+    %w(80 00), # type=128,code=0 (echo request)
+    %w(00 00), # checksum
+    %w(12 34), # identifier
+    %w(ab cd), # sequence number
+    # payload
+    %w(af),
+  ].flatten.map { _1.to_i(16).chr }.join.b.freeze
+  TEST_PACKET_IPV4_ETHERIP = [
+    # ipv4
+    %w(45 00),
+    %w(00 55), # total length (20+2+14+40+8+1=85)
+    %w(c3 98), # identification
+    %w(00 00), # flags
+    %w(40), # ttl
+    %w(61), # protocol
+    %w(32 a0), # checksum
+    %w(c0 00 02 07), # src
+    %w(c0 00 02 08), # dst
+
+    # etherip
+    %w(30 00),
+    # ethernet
+    %w(00 15 5d 83 05 09 30 7c 5e 10 75 01 86 dd),
+    # ipv6
+    %w(60 00 00 00), # version, qos, flow label
+    %w(00 09), # payload length (8+1=9)
+    %w(3a), # next header
+    %w(40), # hop limit
+    %w(20 01 0d b8 00 00 00 00 00 00 00 00 00 00 00 0a), # src
+    %w(20 01 0d b8 00 00 00 00 00 00 00 00 00 00 00 0b), # dst 
+    # icmp
+    %w(80 00), # type=128,code=0 (echo request)
+    %w(00 00), # checksum
+    %w(12 34), # identifier
+    %w(ab cd), # sequence number
+    # payload
+    %w(af),
+  ].flatten.map { _1.to_i(16).chr }.join.b.freeze
+
+
   def expect_packet_equal(version, expected_packet_, output, checksum: nil)
     expected_packet = expected_packet_.dup
 
@@ -454,6 +515,7 @@ RSpec.describe Xlat::Rfc7915 do
   describe "meta" do
     self.class.ancestors.flat_map(&:constants).grep(/TEST_PACKET_/).uniq.each do |test_packet_const_name|
       version = test_packet_const_name.to_s.include?('IPV4') ? 4 : 6
+      l4cksum = test_packet_const_name.to_s.match?(/_TRUE_|DNS|ICMP|TCP|UDP/i)
       bytes = const_get(test_packet_const_name)
       describe test_packet_const_name do
         let(:output) do
@@ -470,7 +532,7 @@ RSpec.describe Xlat::Rfc7915 do
 
         it "has a correct l4 checksum" do
           assert_l4_checksum(version)
-        end
+        end if l4cksum
       end
     end
   end
@@ -546,6 +608,14 @@ RSpec.describe Xlat::Rfc7915 do
       it "translates into ipv4" do
         expect_packet_equal(4, TEST_PACKET_IPV4_ICMP_POINTER, output)
         assert_l4_checksum(4)
+      end
+    end
+
+    context "with unknown protocol" do
+      let!(:output) { translator.translate_to_ipv4(Xlat::Protocols::Ip.parse(TEST_PACKET_IPV6_ETHERIP.dup)) }
+
+      it "translates into ipv4" do
+        expect_packet_equal(4, TEST_PACKET_IPV4_ETHERIP, output)
       end
     end
   end
@@ -629,6 +699,14 @@ RSpec.describe Xlat::Rfc7915 do
 
         expect_packet_equal(6, ipv6, output)
         assert_l4_checksum(6)
+      end
+    end
+
+    context "with unknown protocol" do
+      let!(:output) { translator.translate_to_ipv6(Xlat::Protocols::Ip.parse(TEST_PACKET_IPV4_ETHERIP.dup)) }
+
+      it "translates into ipv6" do
+        expect_packet_equal(6, TEST_PACKET_IPV6_ETHERIP, output)
       end
     end
 
