@@ -337,7 +337,7 @@ module Xlat
         if payload_translated
           new_header_size = payload_translated[0].size
           l4_bytes[payload_offset, new_header_size] = payload_translated[0]
-          l4_bytes[payload_offset+new_header_size..] = payload_translated[1]
+          l4_bytes[payload_offset+new_header_size..] = payload_translated[1][0,500] # FIXME: more appropriate length limit
 
           l4_length_changed = 8 + new_header_size + payload_translated[1].size
           if translate_payload == :error_payload_rfc4884 && l4_bytes.getbyte(l4_bytes_offset+4) > 0
@@ -345,8 +345,6 @@ module Xlat
             l4_bytes.setbyte(l4_bytes_offset+5, l4_length_changed-8)
           end
         end
-
-        # TODO: length limit
 
         # Force recalculation of ICMP checksum
         l4_bytes.setbyte(l4_bytes_offset+2,0)
@@ -456,7 +454,7 @@ module Xlat
         if payload_translated
           new_header_size = payload_translated[0].size
           l4_bytes[payload_offset, new_header_size] = payload_translated[0]
-          l4_bytes[payload_offset+new_header_size..] = payload_translated[1]
+          l4_bytes[payload_offset+new_header_size..] = payload_translated[1][0,500] # FIXME: more appropriate length limit
 
           l4_length_changed = 8 + new_header_size + payload_translated[1].size
           if translate_payload == :error_payload_rfc4884 && l4_bytes.getbyte(l4_bytes_offset+5) > 0
@@ -465,7 +463,6 @@ module Xlat
           end
         end
 
-        # TODO: length limit
 
         # Force recalculation of ICMP checksum
         l4_bytes.setbyte(l4_bytes_offset+2,0)
