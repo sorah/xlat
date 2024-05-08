@@ -31,6 +31,7 @@ module Xlat
       class Error < Base
         V4_TYPE_DEST_UNREACH = 3
         V4_TYPE_TIME_EXCEEDED = 11
+        V4_TYPE_PARAMETER_PROBLEM = 12
 
         V6_TYPE_DEST_UNREACH = 1
         V6_TYPE_PACKET_TOO_BIG = 2

@@ -142,6 +142,12 @@ module Xlat
       cs_delta_b = @destination_address_translator.translate_address_to_ipv6(ipv4_bytes[16,4], new_header_buffer, 24) or return return_buffer_ownership()
       cs_delta += cs_delta_a + cs_delta_b
 
+      if !icmp_payload && ipv4_packet.proto == 1 # icmpv4
+        icmp_result = translate_icmpv4_to_icmpv6(ipv4_packet, new_header_buffer)
+        return return_buffer_ownership() unless icmp_result
+        cs_delta += icmp_result
+      end
+
       # TODO: generate udp checksum option (section 4.5.)
       # TODO: ICMPv4 => ICMPv6
       ipv6_packet = Protocols::Ip.new(new_header_buffer, proto: Protocols::Ip::Ipv6, l4_bytes: ipv4_packet.l4_bytes, l4_bytes_offset: ipv4_packet.l4_bytes_offset)
@@ -187,6 +193,17 @@ module Xlat
       ary.freeze
     end
 
+    gen_pointer_map = ->(h) do
+      ary = Array.new(40)
+      h.each do |from_,to|
+        from = from_.is_a?(Integer) ? from_..from_ : from_
+        from.each do |f|
+          ary[f] = to
+        end
+      end
+      ary.freeze
+    end
+
     ICMPV6V4_TYPE_MAP = gen_type_map[{
       [1,0] => [3,1,:error_payload_rfc4884], # destination unreachable, no route to destination
       [1,1] => [3,10,:error_payload_rfc4884], # destination unreachable, admin prohibited
@@ -206,7 +223,7 @@ module Xlat
     }]
 
     # https://datatracker.ietf.org/doc/html/rfc7915#section-5.2 Figure 6
-    ICMPV6_POINTER_MAP = {
+    ICMPV6_POINTER_MAP = gen_pointer_map[{
       0 => 0,
       1 => 1,
       4 => 2,
@@ -215,16 +232,41 @@ module Xlat
       7 => 8,
       8..23 => 12,
       24..39 => 16,
-    }.then do |map|
-      ary = Array.new(40)
-      map.each do |from_,to|
-        from = from_.is_a?(Integer) ? from_..from_ : from_
-        from.each do |f|
-          ary[f] = to
-        end
-      end
-      ary
-    end
+    }]
+
+    ICMPV4V6_TYPE_MAP = gen_type_map[{
+      [0,nil] => [129,0], # echo
+      [8,nil] => [128,0], # echo reply
+      [3,0] => [1,0,:error_payload_rfc4884], # destination unreachable, net unreachable
+      [3,1] => [1,1,:error_payload_rfc4884], # destination unreachable, host unreachable
+      [3,2] => [4,1,:pointer_static_next_header], # destination unreachable, protocol unreachable
+      [3,3] => [1,4,:error_payload_rfc4884], # destination unreachable, port unreachable
+      [3,4] => [2,0,:mtu], # destination unreachable, fragmentation needed
+      [3,5] => [1,0,:error_payload_rfc4884], # destination unreachable, source route failed
+      [3,6] => [1,0,:error_payload_rfc4884], # destination unreachable, ?
+      [3,7] => [1,0,:error_payload_rfc4884], # destination unreachable, ?
+      [3,8] => [1,0,:error_payload_rfc4884], # destination unreachable, ?
+      [3,9] => [1,1,:error_payload_rfc4884], # destination unreachable, host admin prohibited
+      [3,10] => [1,1,:error_payload_rfc4884], # destination unreachable, host admin prohibited
+      [3,11] => [1,0,:error_payload_rfc4884], # destination unreachable, ?
+      [3,12] => [1,0,:error_payload_rfc4884], # destination unreachable, ?
+      [3,13] => [1,1,:error_payload_rfc4884], # destination unreachable, admin prohibited
+      [3,15] => [1,1,:error_payload_rfc4884], # destination unreachable, precedence cutoff in effect
+      [11,nil] => [3,nil,:error_payload_rfc4884], # time exceeded
+      [12,0] => [4,0,:pointer], # parameter problem, pointer indicates the error
+      [12,2] => [4,0,:pointer], # parameter problem, bad length
+    }]
+
+    # https://datatracker.ietf.org/doc/html/rfc7915#section-5.2 Figure 6
+    ICMPV4_POINTER_MAP = gen_pointer_map[{
+      0 => 0,
+      1 => 1,
+      2..3 => 4,
+      8 => 7,
+      9 => 6,
+      12..15 => 8,
+      16..19 => 24,
+    }]
 
     private def translate_icmpv6_to_icmpv4(ipv6_packet, new_header_buffer)
       raise unless @inner_icmp
@@ -335,6 +377,127 @@ module Xlat
       outer_cs_delta
     end
 
+    private def translate_icmpv4_to_icmpv6(ipv4_packet, new_header_buffer)
+      raise unless @inner_icmp
+      icmpv4 = ipv4_packet.l4
+      raise unless icmpv4
+      outer_cs_delta = 0
+      cs_delta = 0
+
+      code_handlers = ICMPV4V6_TYPE_MAP[icmpv4.type]
+      return unless code_handlers
+      type_handler = code_handlers[icmpv4.code] || code_handlers[0x100]
+      return unless type_handler
+      new_type,new_code,payload_handler = type_handler
+
+      l4_bytes = ipv4_packet.l4_bytes
+      l4_bytes_offset = ipv4_packet.l4_bytes_offset
+
+
+      cs_delta += (new_type - icmpv4.type) * 256
+      l4_bytes.setbyte(l4_bytes_offset, new_type)
+      if new_code
+        cs_delta += (new_code - icmpv4.code)
+        l4_bytes.setbyte(l4_bytes_offset+1, new_code)
+      end
+
+      #p l4: [l4_bytes[l4_bytes_offset..]].join.chars.map { _1.ord.to_s(16).rjust(2,'0') }.join(' ')
+
+      translate_payload = false
+      l4_length_changed = false
+
+      case payload_handler
+      when nil
+        # do nothing
+      when :error_payload
+        translate_payload = true
+      when :error_payload_rfc4884
+        translate_payload = :error_payload_rfc4884
+
+      when :mtu
+        translate_payload = true
+        # https://datatracker.ietf.org/doc/html/rfc1191#section-4
+        mtu = string_get16be(l4_bytes, l4_bytes_offset+6)
+        l4_bytes.setbyte(l4_bytes_offset+4,0)
+        l4_bytes.setbyte(l4_bytes_offset+5,0)
+        new_mtu = mtu+20 # FIXME: not complete implementation
+        new_mtu = 1280 if mtu < 1280
+        string_set16be(l4_bytes,l4_bytes_offset+6,new_mtu)
+
+      when :pointer, :pointer_static_next_header
+        translate_payload = true
+        ptr = l4_bytes.getbyte(l4_bytes_offset+4)
+
+        newptr = case
+        when newptr == :pointer_static_next_header
+          6 # Next Header
+        else
+          ICMPV4_POINTER_MAP[ptr]
+        end
+        return unless newptr
+        l4_bytes.setbyte(l4_bytes_offset+4,0)
+        l4_bytes.setbyte(l4_bytes_offset+5,0)
+        string_set16be(l4_bytes,l4_bytes_offset+6,newptr)
+
+      else
+        raise
+      end
+
+      if translate_payload
+        payload_offset = l4_bytes_offset+8
+        payload = Xlat::Protocols::Ip.parse(l4_bytes[payload_offset..])
+        # TODO: protocol version verification
+        payload_translated = payload && @inner_icmp.translate_to_ipv6(payload)
+        if payload_translated
+          new_header_size = payload_translated[0].size
+          l4_bytes[payload_offset, new_header_size] = payload_translated[0]
+          l4_bytes[payload_offset+new_header_size..] = payload_translated[1]
+
+          l4_length_changed = 8 + new_header_size + payload_translated[1].size
+          if translate_payload == :error_payload_rfc4884 && l4_bytes.getbyte(l4_bytes_offset+5) > 0
+            l4_bytes.setbyte(l4_bytes_offset+4, l4_length_changed-8)
+            l4_bytes.setbyte(l4_bytes_offset+5, 0)
+          end
+        end
+
+        # TODO: length limit
+
+        # Force recalculation of ICMP checksum
+        l4_bytes.setbyte(l4_bytes_offset+2,0)
+        l4_bytes.setbyte(l4_bytes_offset+3,0)
+        cksum = Protocols::Ip.checksum(l4_bytes, l4_bytes_offset)
+        string_set16be(l4_bytes, l4_bytes_offset+2, cksum)
+        cksum = Protocols::Ip.checksum_adjust(cksum, new_header_buffer[8,32].unpack('n*').sum + l4_length_changed + 58) # pseudo header
+        string_set16be(l4_bytes, l4_bytes_offset+2, cksum)
+
+      else
+        # For incremental checksum update, ADD pseudo header to ICMP checksum
+        upper_layer_packet_length = l4_bytes.bytes.size - l4_bytes_offset
+        # [8,32] = src+dst addr
+        cs_delta += new_header_buffer[8,32].unpack('n*').sum + upper_layer_packet_length + 58
+
+        checksum = string_get16be(l4_bytes, l4_bytes_offset+2)
+        checksum = Protocols::Ip.checksum_adjust(checksum, cs_delta)
+        checksum = 65535 if checksum == 0
+        checksum = string_set16be(l4_bytes, l4_bytes_offset+2, checksum)
+      end
+
+
+      ### NOTE: this method must not return nil beyond this line - altering outer l3 header ###
+
+      if l4_length_changed
+        # Update Outer IPv6 Payload Length field
+        new_payload_length = l4_length_changed
+        outer_cs_delta += new_payload_length - string_get16be(new_header_buffer,4)
+        string_set16be(new_header_buffer,4,new_payload_length)
+      end
+
+      new_header_buffer.setbyte(6, 58) # nextheader=icmpv4
+      outer_cs_delta += 57 # 58(icmpv6)-1(icmpv4)
+
+      #p l4: [l4_bytes[l4_bytes_offset..]].join.chars.map { _1.ord.to_s(16).rjust(2,'0') }.join(' ')
+      outer_cs_delta
+    end
 
   end
 end

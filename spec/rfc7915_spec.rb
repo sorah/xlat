@@ -516,8 +516,7 @@ RSpec.describe Xlat::Rfc7915 do
       let!(:output) do
         ipv6 = TEST_PACKET_IPV6_ICMP_ADMIN.dup
         ipv6.setbyte(44,49) # rfc4884 length
-        Xlat::Common.string_set16be(ipv6,42,Xlat::Protocols::Ip.checksum_adjust(Xlat::Common.string_get16be(ipv6,42), 49 << 4))
-
+        Xlat::Common.string_set16be(ipv6,42,Xlat::Protocols::Ip.checksum_adjust(Xlat::Common.string_get16be(ipv6,42), 49 << 8))
 
         translator.translate_to_ipv4(Xlat::Protocols::Ip.parse(ipv6))
       end
@@ -567,6 +566,72 @@ RSpec.describe Xlat::Rfc7915 do
         expect_packet_equal(6, TEST_PACKET_IPV6_TCP, output)
       end
     end
+
+    context "with icmp echo" do
+      let!(:output) { translator.translate_to_ipv6(Xlat::Protocols::Ip.parse(TEST_PACKET_IPV4_ICMP_ECHO.dup)) }
+
+      it "translates into ipv6" do
+        expect_packet_equal(6, TEST_PACKET_IPV6_ICMP_ECHO, output)
+        assert_l4_checksum(6)
+      end
+    end
+
+    context "with icmp payload" do
+      let!(:output) { translator.translate_to_ipv6(Xlat::Protocols::Ip.parse(TEST_PACKET_IPV4_ICMP_ADMIN.dup)) }
+
+      it "translates into ipv6" do
+        expect_packet_equal(6, TEST_PACKET_IPV6_ICMP_ADMIN, output)
+        assert_l4_checksum(6)
+      end
+    end
+
+    context "with icmp payload + RFC 4884" do
+      let!(:output) do
+        ipv4 = TEST_PACKET_IPV4_ICMP_ADMIN.dup
+        ipv4.setbyte(25,29) # rfc4884 length
+        Xlat::Common.string_set16be(ipv4,22,Xlat::Protocols::Ip.checksum_adjust(Xlat::Common.string_get16be(ipv4,22), 29))
+
+        translator.translate_to_ipv6(Xlat::Protocols::Ip.parse(ipv4))
+      end
+
+      it "translates into ipv6" do
+        ipv6 = TEST_PACKET_IPV6_ICMP_ADMIN.dup
+        ipv6.setbyte(44,49) # rfc4884 length
+        Xlat::Common.string_set16be(ipv6,42,Xlat::Protocols::Ip.checksum_adjust(Xlat::Common.string_get16be(ipv6,42), 49 << 8))
+
+        expect_packet_equal(6, ipv6, output)
+        assert_l4_checksum(6)
+      end
+    end
+
+    context "with icmp mtu" do
+      let!(:output) { translator.translate_to_ipv6(Xlat::Protocols::Ip.parse(TEST_PACKET_IPV4_ICMP_MTU.dup)) }
+
+      it "translates into ipv6" do
+        ipv6 = TEST_PACKET_IPV6_ICMP_MTU.dup
+        # clear first 2 octets from MTU field (32-bit number) contained in TEST_PACKET_IPV6_ICMP_MTU
+        # no checksum adjust as -0xffff keep checksum
+        ipv6.setbyte(44,0)
+        ipv6.setbyte(45,0)
+
+        expect_packet_equal(6, ipv6, output)
+        assert_l4_checksum(6)
+      end
+    end
+
+    context "with icmp err header field" do
+      let!(:output) { translator.translate_to_ipv6(Xlat::Protocols::Ip.parse(TEST_PACKET_IPV4_ICMP_POINTER.dup)) }
+
+      it "translates into ipv6" do
+        ipv6 = TEST_PACKET_IPV6_ICMP_POINTER.dup
+        ipv6.setbyte(47,0x08) # pointer=8
+        Xlat::Common.string_set16be(ipv6,42,Xlat::Protocols::Ip.checksum_adjust(Xlat::Common.string_get16be(ipv6,42), -1))
+
+        expect_packet_equal(6, ipv6, output)
+        assert_l4_checksum(6)
+      end
+    end
+
   end
 
 end
