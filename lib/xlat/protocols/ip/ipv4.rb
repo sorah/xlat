@@ -80,7 +80,7 @@ module Xlat
           when Icmp::Echo::V4_TYPE_REQUEST
             Icmp::Echo.new(packet, true)
           when Icmp::Echo::V4_TYPE_REPLY
-            Icmo::Echo.new(packet, false)
+            Icmp::Echo.new(packet, false)
           when Icmp::Error::V4_TYPE_DEST_UNREACH, Icmp::Error::V4_TYPE_TIME_EXCEEDED, Icmp::Error::V4_TYPE_PARAMETER_PROBLEM
             Icmp::Error.new(packet)
           else

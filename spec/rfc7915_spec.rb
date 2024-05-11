@@ -182,6 +182,47 @@ RSpec.describe Xlat::Rfc7915 do
     %w(af),
   ].flatten.map { _1.to_i(16).chr }.join.b.freeze
 
+  TEST_PACKET_IPV4_ICMP_ECHO_REPLY = [
+    # ipv4
+    %w(45 00),
+    %w(00 1d), # total length (20+8+1=29)
+    %w(c3 98), # identification
+    %w(00 00), # flags
+    %w(40), # ttl
+    %w(01), # protocol
+    %w(33 38), # checksum
+    %w(c0 00 02 07), # src
+    %w(c0 00 02 08), # dst
+
+    # icmp
+    %w(00 00), # type=0, code=0 (echo reply)
+    %w(92 fd), # checksum
+    %w(12 34), # identifier
+    %w(ab cd), # sequence number
+
+    # payload
+    %w(af),
+  ].flatten.map { _1.to_i(16).chr }.join.b.freeze
+
+  TEST_PACKET_IPV6_ICMP_ECHO_REPLY = [
+    # ipv6
+    %w(60 00 00 00), # version, qos, flow label
+    %w(00 09), # payload length (8+1=9)
+    %w(3a), # next header
+    %w(40), # hop limit
+    %w(20 01 0d b8 00 60 00 00 00 00 00 00 c0 00 02 07), # src
+    %w(20 01 0d b8 00 64 00 00 00 00 00 00 c0 00 02 08), # dst
+
+    # icmp
+    %w(81 00), # type=129,code=0 (echo reply)
+    %w(31 73), # checksum
+    %w(12 34), # identifier
+    %w(ab cd), # sequence number
+
+    # payload
+    %w(af),
+  ].flatten.map { _1.to_i(16).chr }.join.b.freeze
+
   TEST_PACKET_IPV4_ICMP_ADMIN = [
     # ipv4
     %w(45 00),
@@ -565,6 +606,15 @@ RSpec.describe Xlat::Rfc7915 do
       end
     end
 
+    context "with icmp echo reply" do
+      let!(:output) { translator.translate_to_ipv4(Xlat::Protocols::Ip.parse(TEST_PACKET_IPV6_ICMP_ECHO_REPLY.dup)) }
+
+      it "translates into ipv4" do
+        expect_packet_equal(4, TEST_PACKET_IPV4_ICMP_ECHO_REPLY, output)
+        assert_l4_checksum(4)
+      end
+    end
+
     context "with icmp payload" do
       let!(:output) { translator.translate_to_ipv4(Xlat::Protocols::Ip.parse(TEST_PACKET_IPV6_ICMP_ADMIN.dup)) }
 
@@ -642,6 +692,15 @@ RSpec.describe Xlat::Rfc7915 do
 
       it "translates into ipv6" do
         expect_packet_equal(6, TEST_PACKET_IPV6_ICMP_ECHO, output)
+        assert_l4_checksum(6)
+      end
+    end
+
+    context "with icmp echo reply" do
+      let!(:output) { translator.translate_to_ipv6(Xlat::Protocols::Ip.parse(TEST_PACKET_IPV4_ICMP_ECHO_REPLY.dup)) }
+
+      it "translates into ipv6" do
+        expect_packet_equal(6, TEST_PACKET_IPV6_ICMP_ECHO_REPLY, output)
         assert_l4_checksum(6)
       end
     end
