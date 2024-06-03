@@ -495,6 +495,37 @@ RSpec.describe Xlat::Rfc7915 do
     %w(af),
   ].flatten.map { _1.to_i(16).chr }.join.b.freeze
 
+  TEST_PACKET_IPV4_ICMP_INCOMPLETE_HDR = [
+    # ipv4
+    %w(45 00),
+    %w(00 18), # total length (20+4=24)
+    %w(c3 98), # identification
+    %w(00 00), # flags
+    %w(40), # ttl
+    %w(01), # protocol
+    %w(33 3d), # checksum
+    %w(c0 00 02 07), # src
+    %w(c0 00 02 08), # dst
+
+    # icmp
+    %w(00 00), # type=0,code=0
+    %w(ff ff), # checksum
+    # incomplete header
+  ].flatten.map { _1.to_i(16).chr }.join.b.freeze
+  TEST_PACKET_IPV6_ICMP_INCOMPLETE_HDR = [
+    # ipv6
+    %w(60 00 00 00), # version, qos, flow label
+    %w(00 04), # payload length (4)
+    %w(3a), # next header
+    %w(40), # hop limit
+    %w(20 01 0d b8 00 60 00 00 00 00 00 00 c0 00 02 07), # src
+    %w(20 01 0d b8 00 64 00 00 00 00 00 00 c0 00 02 08), # dst
+
+    # icmp
+    %w(00 00), # type=0,code=0
+    %w(1f 7b), # checksum
+    # incomplete header
+  ].flatten.map { _1.to_i(16).chr }.join.b.freeze
 
   def expect_packet_equal(version, expected_packet_, output, checksum: nil)
     expected_packet = expected_packet_.dup
@@ -769,6 +800,21 @@ RSpec.describe Xlat::Rfc7915 do
       end
     end
 
+    context "with ICMP incomplete header" do
+      let!(:output) {  translator.translate_to_ipv6(Xlat::Protocols::Ip.parse(TEST_PACKET_IPV4_ICMP_INCOMPLETE_HDR.dup)) }
+
+      it "is discarded without error" do
+        expect(output).to be_nil
+      end
+    end
+
+    context "with ICMP6 incomplete header" do
+      let!(:output) {  translator.translate_to_ipv4(Xlat::Protocols::Ip.parse(TEST_PACKET_IPV6_ICMP_INCOMPLETE_HDR.dup)) }
+
+      it "is discarded without error" do
+        expect(output).to be_nil
+      end
+    end
   end
 
 end

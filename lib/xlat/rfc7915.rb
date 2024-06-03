@@ -276,7 +276,7 @@ module Xlat
     private def translate_icmpv6_to_icmpv4(ipv6_packet, new_header_buffer)
       raise unless @inner_icmp
       icmpv6 = ipv6_packet.l4
-      raise unless icmpv6
+      return unless icmpv6
       outer_cs_delta = 0
       cs_delta = 0
 
@@ -383,7 +383,7 @@ module Xlat
     private def translate_icmpv4_to_icmpv6(ipv4_packet, new_header_buffer)
       raise unless @inner_icmp
       icmpv4 = ipv4_packet.l4
-      raise unless icmpv4
+      return unless icmpv4
       outer_cs_delta = 0
       cs_delta = 0
 
