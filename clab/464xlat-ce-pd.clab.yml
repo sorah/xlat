@@ -1,0 +1,133 @@
+name: 464xlat-ue-pd
+
+# Scenario:
+#  The user equipment (ue) has IPv6-only connectivity with a /64 delegated prefix.
+#  UE performs on-host CLAT using a /96 prefix chosen within its delegated prefix.
+#  The server (sv) has IPv4-only connectivity.
+#  The provider-side translator (plat) provides NAT64 service between UE and the server.
+#
+#  CLAT is SIIT (xlat), and PLAT is NAT66 (nftables) + SIIT (xlat).
+#
+# [ue] <--> [rt1] <--> [plat] <--> [rt2] <--> [sv]
+#
+# Addresses:
+#  64:ff9b::/96                 plat: PLAT-side IPv6 prefix (Pref64::/n)
+#  2001:db8:2::/48              rt1: UE pool
+#  2001:db8:2:cafe::/64         ue: delegated prefix
+#  2001:db8:2:cafe::1           ue: primary address
+#  2001:db8:2:cafe:46:700::/96  ue: CLAT-side IPv6 prefix
+#  2001:db8:66:d1e0::/96        plat: NAT66 outer prefix (local use)
+#  fe80::1                      rt1: link-local
+#  fe80::2                      rt2: link-local
+#  fe80::64                     plat: link-local
+#  fe80::cafe                   ue: link-local
+#  192.0.0.1                    ue: loopback address for IPv4 service continuity
+#  192.0.2.0/24                 rt2: server segment
+#  192.0.2.1                    rt2: gateway address for the segment
+#  192.0.2.80                   server: primary address
+#  203.0.113.0/29               plat: NAT64 outer pool
+
+mgmt:
+  external-access: false
+
+topology:
+  nodes:
+    ue:
+      kind: linux
+      image: &image localhost/xlat/xlat
+      cmd: tun-xlat 64:ff9b::/96 2001:db8:2:cafe:46:700::/96
+      exec:
+        - &remove_default_rt sh -c 'ip -4 route del default && ip -6 route del default'
+        - &enable_forwarding sysctl -w net.ipv4.conf.all.forwarding=1 net.ipv6.conf.all.forwarding=1
+
+        # Direct IPv4 traffic to Xlat
+        - ip link set dev tun-xlat up
+        - ip route add 0.0.0.0/0 dev tun-xlat
+        - ip route add 2001:db8:2:cafe:46:700::/96 dev tun-xlat
+
+        # Assign a dummy IPv4 address from IPv4 Service Continuity Prefix [RFC7335]
+        - ip addr add 192.0.0.1/32 dev lo
+
+        # rt1: IPv6 uplink
+        - ip addr add 2001:db8:2:cafe::1/64 dev eth1
+        - ip addr add fe80::cafe/64 dev eth1
+        - ip route add ::/0 via fe80::1 dev eth1
+
+    rt1:
+      kind: linux
+      image: *image
+      entrypoint: /bin/sleep
+      cmd: infinity
+      exec:
+        - *remove_default_rt
+        - *enable_forwarding
+
+        # ue
+        - ip addr add fe80::1/64 dev eth1
+        - ip route add 2001:db8:2:cafe::/64 via fe80::cafe dev eth1
+
+        # plat
+        - ip addr add fe80::1/64 dev eth2
+        - ip route add 64:ff9b::/96 via fe80::64 dev eth2
+
+    plat:
+      kind: linux
+      image: *image
+      cmd: tun-xlat 2001:db8:66:d1e0::/96 64:ff9b::/96
+      exec:
+        - *remove_default_rt
+        - *enable_forwarding
+
+        # rt1
+        - ip addr add fe80::64/64 dev eth1
+        - ip route add ::/0 via fe80::1 dev eth1
+
+        # rt2
+        - ip addr add fe80::64/64 dev eth2
+        - ip route add 0.0.0.0/0 via inet6 fe80::2 dev eth2
+
+        # Configure NAT66: Pref64::/96 -> internal prefix + IPv4 outer
+        - nft "add table ip6 nat"
+        - nft "add chain ip6 nat postrouting { type nat hook postrouting priority srcnat; }"
+        - nft "add rule ip6 nat postrouting ip6 daddr 64:ff9b::/96 counter snat to 2001:db8:66:d1e0::cb00:7100/125"  # 203.0.113.0/29
+
+        # Direct NAT64 traffic to Xlat
+        - ip link set dev tun-xlat up
+        - ip route add 64:ff9b::/96 dev tun-xlat
+        - ip route add 203.0.113.0/29 dev tun-xlat
+
+    rt2:
+      kind: linux
+      image: *image
+      entrypoint: /bin/sleep
+      cmd: infinity
+      exec:
+        - *remove_default_rt
+        - *enable_forwarding
+
+        # plat
+        - ip addr add fe80::2/64 dev eth1
+        - ip route add 203.0.113.0/29 via inet6 fe80::64 dev eth1
+
+        # sv
+        - ip addr add 192.0.2.1/24 dev eth2
+
+    sv:
+      kind: linux
+      image: busybox
+      cmd: httpd -f -h /tmp
+      exec:
+        - *remove_default_rt
+        - *enable_forwarding
+
+        - sh -c 'echo Hello > /tmp/index.html'
+
+        # rt2: IPv4 uplink
+        - ip addr add 192.0.2.80/24 dev eth1
+        - ip route add 0.0.0.0/0 via 192.0.2.1 dev eth1
+
+  links:
+    - endpoints: ["ue:eth1", "rt1:eth1"]
+    - endpoints: ["plat:eth1", "rt1:eth2"]
+    - endpoints: ["plat:eth2", "rt2:eth1"]
+    - endpoints: ["sv:eth1", "rt2:eth2"]
