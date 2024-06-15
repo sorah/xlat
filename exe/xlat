@@ -1,0 +1,34 @@
+#!/usr/bin/env ruby
+
+require 'logger'
+require 'xlat/adapters/linux_tun'
+require 'xlat/address_translators/rfc6052'
+require 'xlat/rfc7915'
+require 'xlat/runner'
+
+if ARGV.size != 3
+  $stderr.puts "Usage: #$0 IFNAME SRC::/N DST::/N"
+  exit 1
+end
+
+ifname, src_prefix, dst_prefix = *ARGV
+logger = Logger.new(STDERR)
+
+RubyVM::YJIT.enable if defined? RubyVM::YJIT.enable
+
+Xlat::Adapters::LinuxTun.open(ifname) do |tun|
+  tun.mtu = 1500
+
+  loop do
+    Xlat::Runner.new(
+      adapter: tun,
+      translator: Xlat::Rfc7915.new(
+        source_address_translator: Xlat::AddressTranslators::Rfc6052.new(src_prefix),
+        destination_address_translator: Xlat::AddressTranslators::Rfc6052.new(dst_prefix),
+      ),
+      logger:,
+    ).run
+  rescue
+    logger.error { $!.full_message }
+  end
+end
