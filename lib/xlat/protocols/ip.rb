@@ -56,9 +56,9 @@ module Xlat
         bytes = @bytes
 
         # mimimum size for IPv4
-        return nil if bytes.length < 20
+        return nil if bytes.size < 20
 
-        case bytes.getbyte(0) >> 4
+        case bytes.get_value(:U8, 0) >> 4
         when 4
           @version = Ipv4
         when 6
@@ -129,15 +129,34 @@ module Xlat
 
       def self.checksum(bytes, from = nil, len = nil)
         from = 0 if from.nil?
-        len = bytes.length - from if len.nil?
+        len = bytes.size - from if len.nil?
         to = from + len - 1
 
-        sum = bytes[from..to].unpack('n*').sum
-        sum += bytes.getbyte(to) * 256 if len.odd?
+        sum = Common.sum16be(bytes.slice(from, len))
+        sum += bytes.get_value(:U8, to) * 256 if len.odd?
         sum = (sum & 0xffff) + (sum >> 16) while sum > 65535
         ~sum & 0xffff
       end
 
+      def self.checksum_list(buffers)
+        sum = 0
+        offset = 0
+        buffers.each do |buf|
+          if offset.odd?
+            sum += buf.get_value(:U8, 0)
+            buf = buf.slice(1)
+            offset += 1
+          end
+          sum += Common.sum16be(buf)
+          len = buf.size
+          if len.odd?
+            sum += buf.get_value(:U8, len - 1) << 8
+          end
+          offset += len
+        end
+        sum = (sum & 0xffff) + (sum >> 16) while sum > 65535
+        ~sum & 0xffff
+      end
 
       # this function assumes 0 <= sum <= 65534
       def self.checksum_adjust(checksum, delta)

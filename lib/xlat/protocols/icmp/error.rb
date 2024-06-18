@@ -43,7 +43,7 @@ module Xlat
         def _parse
           super
 
-          @original = Ip.parse(@packet.bytes[@packet.l4_start + 8..], icmp_payload: true)
+          @original = Ip.parse(@packet.bytes.slice(@packet.l4_start + 8), icmp_payload: true)
           return nil if @original.nil? || @original.version != @packet.version || @original.l4.nil?
 
           self

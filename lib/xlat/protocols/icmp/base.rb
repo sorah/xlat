@@ -43,8 +43,7 @@ module Xlat
           bytes = @packet.bytes
           off = @packet.l4_start
 
-          @type = bytes.getbyte(off)
-          @code = bytes.getbyte(off + 1)
+          @type, @code = bytes.get_values([:U8, :U8], off)
 
           self
         end
@@ -53,9 +52,9 @@ module Xlat
           bytes = packet.bytes
           off = packet.l4_start
 
-          return nil if bytes.length - off < 8
+          return nil if bytes.size - off < 8
 
-          type = bytes.getbyte(off)
+          type = bytes.get_value(:U8, off)
           icmp = packet.version.new_icmp(packet, type)
           icmp._parse
         end
@@ -65,10 +64,10 @@ module Xlat
         end
 
         def self.recalculate_checksum(packet)
-          string_set16be(packet.bytes,packet.l4_start + 2, 0)
+          packet.bytes.set_value(:U16, packet.l4_start + 2, 0)
           checksum = Ip.checksum(packet.bytes, packet.l4_start)
           checksum = Ip.checksum_adjust(checksum, packet.version.icmp_cs_delta(packet)) # pseudo header
-          string_set16be(packet.bytes,packet.l4_start + 2, checksum)
+          packet.bytes.set_value(:U16, packet.l4_start + 2, checksum)
         end
       end
     end

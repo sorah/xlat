@@ -37,7 +37,7 @@ module Xlat
         end
 
         def self.src_addr(bytes)
-          bytes.byteslice(12, 4)
+          bytes.slice(12, 4)
         end
 
         def self.set_src_addr(bytes, new_addr)
@@ -91,16 +91,16 @@ module Xlat
         def self.parse(packet)
           bytes = packet.bytes
 
-          return false if bytes.getbyte(0) != 0x45
+          return false if bytes.get_value(:U8, 0) != 0x45
           # tos?
           # totlen?
           # ignore identification
-          return false if string_get16be(bytes,6) & 0xbfff != 0 # ignore fragments
+          return false if bytes.get_value(:U16, 6) & 0xbfff != 0 # ignore fragments
 
           packet.l4_start = 20
 
           #p bytes.chars.map { _1.ord.to_s(16).rjust(2,'0') }.join(' ')
-          proto = bytes.getbyte(9)
+          proto = bytes.get_value(:U8, 9)
           packet.proto = proto
 
           true
@@ -109,17 +109,17 @@ module Xlat
         def self.apply(bytes, cs_delta, icmp_payload: false)
           # decrement TTL
           unless icmp_payload
-            ttl = bytes.getbyte(8)
+            ttl = bytes.get_value(:U8, 8)
             if ttl > 0
               ttl -= 1
-              bytes.setbyte(8, ttl)
+              bytes.set_value(:U8, 8, ttl)
               cs_delta -= 0x0100 # checksum computation is performed per 2 octets
             end
           end
 
-          checksum = string_get16be(bytes,10)
+          checksum = bytes.get_value(:U16, 10)
           checksum = Ip.checksum_adjust(checksum, cs_delta)
-          string_set16be(bytes,10, checksum)
+          bytes.set_value(:U16, 10, checksum)
         end
       end
     end

@@ -43,7 +43,7 @@ module Xlat
         def _parse
           super
 
-          port = string_get16be(@packet.bytes,@packet.l4_start + 4)
+          port = @packet.bytes.get_value(:U16, @packet.l4_start + 4)
           if @is_req
             @src_port = port
             @dest_port = 0

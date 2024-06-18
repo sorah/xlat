@@ -38,6 +38,14 @@ module Xlat
       str.setbyte(str, off+1, src.getbyte(off+1))
     end
 
+    def sum16be(buffer)
+      sum = 0
+      buffer.each(:U16) do |_, x|
+        sum += x
+      end
+      sum
+    end
+
     class << self
       include Xlat::Common
     end
