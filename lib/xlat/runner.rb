@@ -9,14 +9,14 @@ module Xlat
     end
 
     def run
-      buf = String.new(capacity: @adapter.mtu)
+      buf = IO::Buffer.new(@adapter.mtu)
 
       loop do
-        @adapter.read(buf)
+        bytes = @adapter.read(buf)
 
-        pkt = Protocols::Ip.parse(buf)
+        pkt = Protocols::Ip.parse(bytes)
         unless pkt
-          @logger&.info { "DISCARD: not parsable: #{buf.dump}" }
+          @logger&.info { "DISCARD: not parsable: #{bytes.inspect}" }
           next
         end
 
@@ -30,13 +30,13 @@ module Xlat
         end
 
         unless output
-          @logger&.info { "DISCARD: not translatable: #{buf.dump}" }
+          @logger&.info { "DISCARD: not translatable: #{bytes.inspect}" }
           next
         end
 
         @adapter.write(*output)
       rescue
-        fail "BUG: #{buf.dump}"
+        fail "BUG: #{bytes.inspect}"
       ensure
         @translator.return_buffer_ownership if output
       end

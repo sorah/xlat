@@ -1,4 +1,5 @@
 require 'socket'
+require 'xlat/io_buffer_ext'
 
 module Xlat
   module Adapters
@@ -30,11 +31,12 @@ module Xlat
       end
 
       def read(buf)
-        @io.readpartial(@mtu, buf)
+        size = IOBufferExt.readv(@io, [buf])
+        buf.slice(0, size)
       end
 
       def write(*bufs)
-        @io.write(*bufs)
+        IOBufferExt.writev(@io, bufs)
       end
 
       def close
