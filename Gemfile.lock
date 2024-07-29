@@ -2,12 +2,16 @@ PATH
   remote: .
   specs:
     xlat (0.1.0)
+      rb_sys (~> 0.9.102)
 
 GEM
   remote: https://rubygems.org/
   specs:
     diff-lcs (1.5.0)
     rake (13.1.0)
+    rake-compiler (1.2.7)
+      rake
+    rb_sys (0.9.102)
     rspec (3.12.0)
       rspec-core (~> 3.12.0)
       rspec-expectations (~> 3.12.0)
@@ -27,6 +31,7 @@ PLATFORMS
 
 DEPENDENCIES
   rake (~> 13.0)
+  rake-compiler (~> 1.2)
   rspec (~> 3.0)
   xlat!
 

@@ -5,7 +5,10 @@
 /doc/
 /pkg/
 /spec/reports/
+/target/
 /tmp/
 
 # rspec failure tracking
 .rspec_status
+
+*.so
