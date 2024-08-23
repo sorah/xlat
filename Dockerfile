@@ -1,6 +1,6 @@
 ARG RUBY=3.3
 
-FROM public.ecr.aws/sorah/ruby:$RUBY-dev as build
+FROM public.ecr.aws/sorah/ruby:$RUBY-dev AS build
 
 WORKDIR /src
 COPY . .
