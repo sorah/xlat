@@ -20,4 +20,4 @@ RUN apt-get update && apt-get install -y iproute2 nftables && \
 
 RUN --mount=type=bind,from=build,source=/src/pkg,destination=/pkg gem install /pkg/*.gem
 
-ENTRYPOINT ["/usr/local/bin/xlat"]
+ENTRYPOINT ["/usr/local/bin/xlat-siit"]
