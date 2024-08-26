@@ -141,8 +141,8 @@ module Xlat
       new_header_buffer.setbyte(7, ipv4_bytes.getbyte(8))
 
       # Source and Destination address
-      cs_delta_a = @source_address_translator.translate_address_to_ipv6(ipv4_bytes[12,4], new_header_buffer, 8) or return return_buffer_ownership()
-      cs_delta_b = @destination_address_translator.translate_address_to_ipv6(ipv4_bytes[16,4], new_header_buffer, 24) or return return_buffer_ownership()
+      cs_delta_a = @destination_address_translator.translate_address_to_ipv6(ipv4_bytes[12,4], new_header_buffer, 8) or return return_buffer_ownership()
+      cs_delta_b = @source_address_translator.translate_address_to_ipv6(ipv4_bytes[16,4], new_header_buffer, 24) or return return_buffer_ownership()
       cs_delta += cs_delta_a + cs_delta_b
 
       if !icmp_payload && ipv4_packet.proto == 1 # icmpv4
