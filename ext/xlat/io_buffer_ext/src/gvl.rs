@@ -1,4 +1,4 @@
-use std::{cell::Cell, ffi::c_void, mem, ptr};
+use std::{cell::Cell, ffi::c_void, mem, ops::Deref as _, ptr};
 
 struct Data<'a, F, R>
 where
@@ -30,7 +30,7 @@ where
     unsafe {
         rb_sys::rb_thread_call_without_gvl2(
             Some(trampoline::<F, R>),
-            ptr::from_ref(&data) as *mut c_void,
+            data.deref() as *const Data<F, R> as *mut c_void,
             None,
             ptr::null_mut(),
         )
