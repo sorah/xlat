@@ -2,7 +2,7 @@ use std::{
     fs::File,
     io::{IoSlice, IoSliceMut, Read, Write},
     mem::ManuallyDrop,
-    os::fd::{AsRawFd as _, FromRawFd as _},
+    os::fd::{AsRawFd as _, FromRawFd as _, RawFd},
 };
 
 use magnus::{function, prelude::*, Error, Object, RArray, RFile, Ruby};
@@ -10,10 +10,22 @@ use magnus::{function, prelude::*, Error, Object, RArray, RFile, Ruby};
 mod gvl;
 mod io_buffer;
 
+fn file_from_rfile(io: RFile) -> Result<ManuallyDrop<File>, Error> {
+    let raw_fd = io.as_raw_fd();
+    if raw_fd == -1 as RawFd {
+        Err(Error::new(
+            Ruby::get_with(io).exception_io_error(),
+            "closed stream",
+        ))
+    } else {
+        // Don't take FD ownership from Ruby
+        Ok(ManuallyDrop::new(unsafe { File::from_raw_fd(raw_fd) }))
+    }
+}
+
 /// writev(IO, Array[IO::Buffer]) -> Integer
 fn writev(ruby: &Ruby, io: RFile, bufs: RArray) -> Result<usize, Error> {
-    // Don't take FD ownership from Ruby
-    let mut w = ManuallyDrop::new(unsafe { File::from_raw_fd(io.as_raw_fd()) });
+    let mut w = file_from_rfile(io)?;
 
     let vec = bufs
         .into_iter()
@@ -29,8 +41,7 @@ fn writev(ruby: &Ruby, io: RFile, bufs: RArray) -> Result<usize, Error> {
 
 /// readv(IO, Array[IO::Buffer]) -> Integer
 fn readv(ruby: &Ruby, io: RFile, bufs: RArray) -> Result<usize, Error> {
-    // Don't take FD ownership from Ruby
-    let mut r = ManuallyDrop::new(unsafe { File::from_raw_fd(io.as_raw_fd()) });
+    let mut r = file_from_rfile(io)?;
 
     let mut vec = bufs
         .into_iter()
