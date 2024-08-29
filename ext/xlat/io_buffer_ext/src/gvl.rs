@@ -27,14 +27,23 @@ where
 
     let data = mem::ManuallyDrop::new(Data { fun, ret: &cell });
 
-    unsafe {
-        rb_sys::rb_thread_call_without_gvl2(
-            Some(trampoline::<F, R>),
-            data.deref() as *const Data<F, R> as *mut c_void,
-            None,
-            ptr::null_mut(),
-        )
-    };
+    loop {
+        unsafe {
+            rb_sys::rb_thread_call_without_gvl2(
+                Some(trampoline::<F, R>),
+                data.deref() as *const Data<F, R> as *mut c_void,
+                None,
+                ptr::null_mut(),
+            );
+        }
 
-    cell.take().expect("BUG")
+        // If rb_thread_call_without_gvl2 returns before invoking the callback
+        // due to interrupts, the cell remains to be None, and
+        // it's safe to retry because data is not consumed yet.
+        if let Some(r) = cell.take() {
+            return r;
+        }
+
+        unsafe { rb_sys::rb_thread_check_ints() }
+    }
 }
