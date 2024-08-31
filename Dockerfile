@@ -18,6 +18,8 @@ FROM $RUBY_DEV
 RUN apt-get update && apt-get install -y iproute2 nftables clang cargo && \
     rm -rf /var/lib/apt/lists/*
 
+RUN gem install pf2 -v 0.6.0
+
 RUN --mount=type=bind,from=build,source=/src/pkg,destination=/pkg gem install /pkg/*.gem
 
 ENTRYPOINT ["/usr/local/bin/xlat-siit"]

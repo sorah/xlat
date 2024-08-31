@@ -45,6 +45,24 @@ After checking out the repo, run `bin/setup` to install dependencies. Then, run 
 
 To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and the created tag, and push the `.gem` file to [rubygems.org](https://rubygems.org).
 
+### Profiling with Pf2
+
+Requires: Docker, containerlab, iproute2, iperf3.
+
+```shell
+cd clab/
+./build
+containerlab deploy --reconfigure
+sudo ip netns exec clab-464xlat-ue-pd-sv iperf3 -s
+
+# in another session:
+sudo ip netns exec clab-464xlat-ue-pd-ue iperf3 -c 64:ff9b::192.0.2.80
+docker kill --signal=USR1 clab-464xlat-ue-pd-plat
+docker cp clab-464xlat-ue-pd-plat:/tmp/xlat-1.pf2profile .
+pf2 report ./xlat-1.pf2profile -o ./xlat.json
+```
+
+
 ## Contributing
 
 Bug reports and pull requests are welcome on GitHub at https://github.com/[USERNAME]/xlat.
