@@ -15,7 +15,7 @@ RUN bundle exec rake build
 
 FROM $RUBY_DEV
 
-RUN apt-get update && apt-get install -y iproute2 nftables clang cargo && \
+RUN apt-get update && apt-get install -y iproute2 nftables clang cargo ruby3.3-dbgsym libruby3.3-dbgsym && \
     rm -rf /var/lib/apt/lists/*
 
 RUN gem install pf2 -v 0.6.0
