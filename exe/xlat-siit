@@ -14,21 +14,53 @@ end
 ifname, src_prefix, dst_prefix = *ARGV
 logger = Logger.new(STDERR)
 
-RubyVM::YJIT.enable if defined? RubyVM::YJIT.enable
+begin
+  require 'pf2'
+rescue LoadError
+  def profile = yield
+else
+  def profile
+    return yield unless ENV.key?('XLAT_PROFILE')
 
-Xlat::Adapters::LinuxTun.open(ifname) do |tun|
-  tun.mtu = 1500
+    Pf2.start(threads: [Thread.current])
+    $profiling = true
+    begin
+      yield
+    ensure
+      $profiling = false
+      Pf2.stop
+    end
+  end
+end
 
-  loop do
-    Xlat::Runner.new(
-      adapter: tun,
-      translator: Xlat::Rfc7915.new(
-        source_address_translator: Xlat::AddressTranslators::Rfc6052.new(src_prefix),
-        destination_address_translator: Xlat::AddressTranslators::Rfc6052.new(dst_prefix),
-      ),
-      logger:,
-    ).run
-  rescue
-    logger.error { $!.full_message }
+Signal.trap(:USR1) do
+  break unless $profiling
+
+  profile = Pf2.stop
+  begin
+    File.write("/tmp/xlat-#$$.pf2profile", profile)
+  ensure
+    Pf2.start
+  end
+end
+
+RubyVM::YJIT.enable if defined?(RubyVM::YJIT.enable) && !ENV.key?('XLAT_NOJIT')
+
+profile do
+  Xlat::Adapters::LinuxTun.open(ifname) do |tun|
+    tun.mtu = 1500
+
+    loop do
+      Xlat::Runner.new(
+        adapter: tun,
+        translator: Xlat::Rfc7915.new(
+          source_address_translator: Xlat::AddressTranslators::Rfc6052.new(src_prefix),
+          destination_address_translator: Xlat::AddressTranslators::Rfc6052.new(dst_prefix),
+        ),
+        logger:,
+      ).run
+    rescue
+      logger.error { $!.full_message }
+    end
   end
 end
