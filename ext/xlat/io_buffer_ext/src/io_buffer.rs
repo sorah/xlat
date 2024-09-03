@@ -32,7 +32,7 @@ impl IOBuffer {
                 ptr.as_mut_ptr(),
                 len.as_mut_ptr(),
             );
-            ptr::slice_from_raw_parts(ptr.assume_init() as *const u8, len.assume_init() as usize)
+            ptr::slice_from_raw_parts(ptr.assume_init().cast::<u8>(), len.assume_init() as usize)
         }
     }
 
@@ -45,7 +45,10 @@ impl IOBuffer {
                 ptr.as_mut_ptr(),
                 len.as_mut_ptr(),
             );
-            ptr::slice_from_raw_parts_mut(ptr.assume_init() as *mut u8, len.assume_init() as usize)
+            ptr::slice_from_raw_parts_mut(
+                ptr.assume_init().cast::<u8>(),
+                len.assume_init() as usize,
+            )
         }
     }
 }
