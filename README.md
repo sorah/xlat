@@ -45,7 +45,21 @@ After checking out the repo, run `bin/setup` to install dependencies. Then, run 
 
 To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and the created tag, and push the `.gem` file to [rubygems.org](https://rubygems.org).
 
-### Profiling with Pf2
+### Benchmarking
+
+Requires: iproute2, trafgen&ifpps from [netsniff-ng](http://netsniff-ng.org/) (v0.6.8 of netsniff-ng has [a bug](https://github.com/netsniff-ng/netsniff-ng/pull/233) and you need to build the development version).
+
+The `benchmark/` directory has `trafgen` scenarios to generate artificial traffic to benchmark Xlat.
+
+```shell
+sudo XLAT_PROFILE=1 XLAT_NOJIT=1 ruby ./benchmark/run.rb ./benchmark/tcp.cfg
+# or if your ruby is managed by rbenv
+sudo XLAT_PROFILE=1 XLAT_NOJIT=1 "$(rbenv which ruby)" ./benchmark/run.rb ./benchmark/tcp.cfg
+```
+
+If `XLAT_PROFILE` variable is set, profile is emitted every 10 seconds at `/tmp/xlat-#{pid}.pf2profile`. You need to disable YJIT by setting `XLAT_NOJIT` variable due to the current limitation of Pf2.
+
+### Profiling with Pf2 in Docker
 
 Requires: Docker, containerlab, iproute2, iperf3.
 

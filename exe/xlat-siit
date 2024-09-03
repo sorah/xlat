@@ -20,6 +20,8 @@ rescue LoadError
   def profile = yield
 else
   def profile
+    return yield unless ENV.key?('XLAT_PROFILE')
+
     Pf2.start(threads: [Thread.current])
     $profiling = true
     begin
@@ -42,7 +44,7 @@ Signal.trap(:USR1) do
   end
 end
 
-RubyVM::YJIT.enable if defined? RubyVM::YJIT.enable
+RubyVM::YJIT.enable if defined?(RubyVM::YJIT.enable) && !ENV.key?('XLAT_NOJIT')
 
 profile do
   Xlat::Adapters::LinuxTun.open(ifname) do |tun|
