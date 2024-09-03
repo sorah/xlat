@@ -5,9 +5,9 @@ module Xlat
     # Translate IPv6 address bytestring into IPv4 address and write to given buffer
     # Must return true when translation took place
     #
-    # @param ipv6_address [String] IPv6 address bytestring
-    # @param buffer [String] Destination packet buffer
-    # @param offset [String] Offset in buffer to write IPv6 address
+    # @param ipv6_address [IO::Buffer] IPv6 address buffer
+    # @param buffer [IO::Buffer] Destination packet buffer
+    # @param offset [Integer] Offset in buffer to write IPv6 address
     # @return [Integer, nil] checksum delta value or nil when no translation took place
     def translate_address_to_ipv4(ipv6_address,buffer,offset = 0)
       raise NotImplementedError
@@ -15,9 +15,9 @@ module Xlat
 
     # Translate IPv4 address bytestring into IPv6 address and write to given buffer
     #
-    # @param ipv4_address [String] IPv4 address bytestring
-    # @param buffer [String] Destination packet buffer
-    # @param offset [String] Offset in buffer to write IPv4 address
+    # @param ipv4_address [IO::Buffer] IPv4 address buffer
+    # @param buffer [IO::Buffer] Destination packet buffer
+    # @param offset [Integer] Offset in buffer to write IPv4 address
     # @return [Integer, nil] checksum delta value or nil when no translation took place
     def translate_address_to_ipv6(ipv4_address,buffer,offset = 0)
       raise NotImplementedError

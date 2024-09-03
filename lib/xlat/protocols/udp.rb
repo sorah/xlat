@@ -44,14 +44,14 @@ module Xlat
         bytes = @packet.l4_bytes
         l4_start = @packet.l4_bytes_offset
 
-        checksum = string_get16be(bytes, l4_start + 6)
+        checksum = bytes.get_value(:U16, l4_start + 6)
         return if checksum == 0 # TODO: in ipv6 this requires calculation
 
         checksum = 0 if checksum == 65535
         checksum = _adjust_checksum(checksum, cs_delta)
         checksum = 65535 if checksum == 0
 
-        string_set16be(bytes, l4_start + 6, checksum)
+        bytes.set_value(:U16, l4_start + 6, checksum)
       end
     end
   end

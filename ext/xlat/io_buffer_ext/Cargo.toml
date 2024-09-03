@@ -1,0 +1,11 @@
+[package]
+name = "io_buffer_ext"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+magnus = { version = "0.7", features = ["rb-sys"] }
+rb-sys = { version = "0.9" }

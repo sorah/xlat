@@ -61,19 +61,19 @@ module Xlat
         end
 
         def self.tuple(bytes)
-          bytes.byteslice(8, 32)
+          bytes.slice(8, 32)
         end
 
         def self.update_l4_length(bytes)
-          orig_length = string_get16be(bytes,4)
-          new_length = bytes.length - 40
-          string_set16be(bytes,4, new_length)
+          orig_length = bytes.get_value(:U16, 4)
+          new_length = bytes.size - 40
+          bytes.set_value(:U16, 4, new_length)
           new_length - orig_length
         end
 
         def self.set_l4_length(pseudo_header, packet_bytes, len)
-          string_set16be(pseudo_header, 34, len)
-          string_set16be(packet.bytes,4, len)
+          pseudo_header.set_value(:U16, 34, len)
+          packet.bytes.set_value(:U16, 4, len)
         end
 
         def self.icmp_protocol_id
@@ -81,8 +81,8 @@ module Xlat
         end
 
         def self.icmp_cs_delta(packet)
-          upper_layer_packet_length = packet.bytes.length - packet.l4_start
-          packet.tuple.unpack('n*').sum + upper_layer_packet_length + packet.proto
+          upper_layer_packet_length = packet.bytes.size - packet.l4_start
+          Common.sum16be(tuple) + upper_layer_packet_length + packet.proto
         end
 
         def self.new_icmp(packet, type)
@@ -101,9 +101,9 @@ module Xlat
         def self.parse(packet)
           bytes = packet.bytes
 
-          return false if bytes.length < 40
+          return false if bytes.size < 40
 
-          proto = bytes.getbyte(6)
+          proto = bytes.get_value(:U8, 6)
 
           # drop packets containing IPv6 extensions (RFC 7045 grudgingly acknowledges existence of such middleboxes)
           return false if EXTENSIONS[proto]
@@ -117,10 +117,10 @@ module Xlat
         def self.apply(bytes, cs_delta, icmp_payload: false)
           # decrement hop limit
           unless icmp_payload
-            hop_limit = bytes.getbyte(7)
+            hop_limit = bytes.get_value(:U8, 7)
             if hop_limit > 0
               hop_limit -= 1
-              bytes.setbyte(7, hop_limit)
+              bytes.set_value(:U8, 7, hop_limit)
             end
           end
         end

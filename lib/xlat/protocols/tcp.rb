@@ -55,7 +55,7 @@ module Xlat
         bytes = packet.l4_bytes
         l4_start = packet.l4_bytes_offset
 
-        flags = bytes.getbyte(l4_start + 13)
+        flags = bytes.get_value(:U8, l4_start + 13)
         Tcp.new(packet, flags)
       end
 
@@ -66,9 +66,9 @@ module Xlat
         bytes = @packet.l4_bytes
         l4_start = @packet.l4_bytes_offset
 
-        checksum = string_get16be(bytes, l4_start + 16)
+        checksum = bytes.get_value(:U16, l4_start + 16)
         checksum = _adjust_checksum(checksum, cs_delta)
-        string_set16be(bytes,l4_start + 16, checksum)
+        bytes.set_value(:U16, l4_start + 16, checksum)
       end
     end
   end

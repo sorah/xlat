@@ -37,23 +37,22 @@ module Xlat
         l4_start = packet.l4_bytes_offset
 
         @packet = packet
-        @src_port = string_get16be(bytes,l4_start)
-        @dest_port = string_get16be(bytes,l4_start + 2)
+        @src_port, @dest_port = bytes.get_values([:U16, :U16], l4_start)
         @orig_checksum = @src_port + @dest_port
       end
 
       def src_port=(n)
         @src_port = n
-        string_set16be(@packet.l4_bytes,@packet.l4_bytes_offset, n)
+        @packet.l4_bytes.set_value(:U16, @packet.l4_bytes_offset, n)
       end
 
       def dest_port=(n)
         @dest_port = n
-        string_set16be(@packet.l4_bytes,@packet.l4_bytes_offset + 2, n)
+        @packet.l4_bytes.set_value(:U16, @packet.l4_bytes_offset + 2, n)
       end
 
       def tuple
-        @packet.l4_bytes.byteslice(@packet.l4_bytes_offset, 4)
+        @packet.l4_bytes.slice(@packet.l4_bytes_offset, 4)
       end
 
       def _adjust_checksum(checksum, cs_delta)

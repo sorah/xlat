@@ -1,6 +1,6 @@
-ARG RUBY=3.3
+ARG RUBY_DEV=public.ecr.aws/sorah/ruby:3.3-dev-noble
 
-FROM public.ecr.aws/sorah/ruby:$RUBY-dev AS build
+FROM $RUBY_DEV AS build
 
 WORKDIR /src
 COPY . .
@@ -13,9 +13,9 @@ RUN bundle exec rake build
 
 ###
 
-FROM public.ecr.aws/sorah/ruby:$RUBY
+FROM $RUBY_DEV
 
-RUN apt-get update && apt-get install -y iproute2 nftables && \
+RUN apt-get update && apt-get install -y iproute2 nftables clang cargo && \
     rm -rf /var/lib/apt/lists/*
 
 RUN --mount=type=bind,from=build,source=/src/pkg,destination=/pkg gem install /pkg/*.gem
