@@ -34,7 +34,10 @@ module Xlat
       @new_header_buffer_in_use = false
       return_buffer_ownership
 
-      @inner_icmp = for_icmp ? nil : self.class.new(source_address_translator:, destination_address_translator:, for_icmp: true)
+      unless for_icmp
+        @inner_icmp = self.class.new(source_address_translator:, destination_address_translator:, for_icmp: true)
+        @inner_packet = Protocols::Ip.new(icmp_payload: true)
+      end
     end
 
     attr_reader :next_fragment_identifier
@@ -331,7 +334,7 @@ module Xlat
 
       if translate_payload
         payload_offset = l4_bytes_offset+8
-        payload = Xlat::Protocols::Ip.new(icmp_payload: true).parse(bytes: l4_bytes.slice(payload_offset))
+        payload = @inner_packet.parse(bytes: l4_bytes.slice(payload_offset))
         payload_translated = payload && @inner_icmp.translate_to_ipv4(payload)
         if payload_translated
           output = [
@@ -446,7 +449,7 @@ module Xlat
 
       if translate_payload
         payload_offset = l4_bytes_offset+8
-        payload = Xlat::Protocols::Ip.new(icmp_payload: true).parse(bytes: l4_bytes.slice(payload_offset))
+        payload = @inner_packet.parse(bytes: l4_bytes.slice(payload_offset))
         # TODO: protocol version verification
         payload_translated = payload && @inner_icmp.translate_to_ipv6(payload)
         if payload_translated
