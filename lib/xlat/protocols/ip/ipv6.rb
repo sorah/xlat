@@ -40,40 +40,8 @@ module Xlat
           6
         end
 
-        def self.src_addr(bytes)
-          bytes.byteslice(8, 16)
-        end
-
-        def self.set_src_addr(bytes, new_addr)
-          cs_delta = new_addr.unpack('n*').sum - bytes.unpack('@8n8').sum
-          bytes.bytesplice(8, 16, new_addr)
-          cs_delta
-        end
-
-        def self.dest_addr(bytes)
-          bytes.byteslice(24, 16)
-        end
-
-        def self.set_dest_addr(bytes, new_addr)
-          cs_delta = new_addr.unpack('n*').sum - bytes.unpack('@24n8').sum
-          bytes.bytesplice(24, 16, new_addr)
-          cs_delta
-        end
-
-        def self.tuple(bytes)
-          bytes.slice(8, 32)
-        end
-
-        def self.update_l4_length(bytes)
-          orig_length = bytes.get_value(:U16, 4)
-          new_length = bytes.size - 40
-          bytes.set_value(:U16, 4, new_length)
-          new_length - orig_length
-        end
-
-        def self.set_l4_length(pseudo_header, packet_bytes, len)
-          pseudo_header.set_value(:U16, 34, len)
-          packet.bytes.set_value(:U16, 4, len)
+        def self.tuple(bytes, offset)
+          bytes.slice(offset + 8, 32)
         end
 
         def self.icmp_protocol_id
@@ -81,7 +49,7 @@ module Xlat
         end
 
         def self.icmp_cs_delta(packet)
-          upper_layer_packet_length = packet.bytes.size - packet.l4_start
+          upper_layer_packet_length = packet.l4_bytes.size - packet.l4_bytes_offset
           Common.sum16be(tuple) + upper_layer_packet_length + packet.proto
         end
 
@@ -100,10 +68,11 @@ module Xlat
 
         def self.parse(packet)
           bytes = packet.bytes
+          offset = packet.bytes_offset
 
           return false if bytes.size < 40
 
-          proto = bytes.get_value(:U8, 6)
+          proto = bytes.get_value(:U8, offset + 6)
 
           # drop packets containing IPv6 extensions (RFC 7045 grudgingly acknowledges existence of such middleboxes)
           return false if EXTENSIONS[proto]
@@ -114,15 +83,17 @@ module Xlat
           true
         end
 
-        def self.apply(bytes, cs_delta, icmp_payload: false)
+        def self.apply(bytes, offset, _cs_delta, icmp_payload)
           # decrement hop limit
           unless icmp_payload
-            hop_limit = bytes.get_value(:U8, 7)
+            hop_limit = bytes.get_value(:U8, offset + 7)
             if hop_limit > 0
               hop_limit -= 1
-              bytes.set_value(:U8, 7, hop_limit)
+              bytes.set_value(:U8, offset + 7, hop_limit)
             end
           end
+
+          # IPv6 has no checksum
         end
       end
     end

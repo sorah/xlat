@@ -40,21 +40,22 @@ module Xlat
         end
 
         def _parse
-          bytes = @packet.bytes
-          off = @packet.l4_start
+          bytes = @packet.l4_bytes
+          offset = @packet.l4_bytes_offset
 
-          @type, @code = bytes.get_values([:U8, :U8], off)
+          @type = bytes.get_value(:U8, offset)
+          @code = bytes.get_value(:U8, offset + 1)
 
           self
         end
 
         def self.parse(packet)
-          bytes = packet.bytes
-          off = packet.l4_start
+          bytes = packet.l4_bytes
+          offset = packet.l4_bytes_offset
 
-          return nil if bytes.size - off < 8
+          return nil if bytes.size - offset < 8
 
-          type = bytes.get_value(:U8, off)
+          type = bytes.get_value(:U8, offset)
           icmp = packet.version.new_icmp(packet, type)
           icmp._parse
         end

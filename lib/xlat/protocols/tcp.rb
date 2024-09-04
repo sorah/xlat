@@ -43,32 +43,28 @@ module Xlat
       FLAG_ECE = 0x40
       FLAG_CWR = 0x80
 
-      attr_reader :flags
-
-      def initialize(packet, flags)
-        super(packet)
-        @flags = flags
-      end
-
-      def self.parse(packet, icmp_payload)
-        return nil if packet.total_length < packet.l4_start + (icmp_payload ? 4 : 20)
+      def parse
+        packet = @packet
         bytes = packet.l4_bytes
-        l4_start = packet.l4_bytes_offset
+        offset = packet.l4_bytes_offset
 
-        flags = bytes.get_value(:U8, l4_start + 13)
-        Tcp.new(packet, flags)
+        return nil if bytes.size < offset + (@icmp_payload ? 4 : 20)
+
+        super
       end
 
       def apply(cs_delta)
         return if cs_delta.zero?
-        
-        return unless @packet.total_length >= @packet.l4_start + 18
-        bytes = @packet.l4_bytes
-        l4_start = @packet.l4_bytes_offset
 
-        checksum = bytes.get_value(:U16, l4_start + 16)
+        packet = @packet
+        bytes = packet.l4_bytes
+        offset = packet.l4_bytes_offset
+
+        return if bytes.size < offset + 18
+
+        checksum = bytes.get_value(:U16, offset + 16)
         checksum = _adjust_checksum(checksum, cs_delta)
-        bytes.set_value(:U16, l4_start + 16, checksum)
+        bytes.set_value(:U16, offset + 16, checksum)
       end
     end
   end
