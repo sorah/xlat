@@ -36,35 +36,8 @@ module Xlat
           4
         end
 
-        def self.src_addr(bytes)
-          bytes.slice(12, 4)
-        end
-
-        def self.set_src_addr(bytes, new_addr)
-          cs_delta = new_addr.unpack('n*').sum - bytes.unpack('@12n2').sum
-          bytes.bytesplice(12, 4, new_addr)
-          cs_delta
-        end
-
-        def self.dest_addr(bytes)
-          bytes.byteslice(16, 4)
-        end
-
-        def self.set_dest_addr(bytes, new_addr)
-          cs_delta = new_addr.unpack('n*').sum - bytes.unpack('@16n2').sum
-          bytes.bytesplice(16, 4, new_addr)
-          cs_delta
-        end
-
-        def self.tuple(bytes)
-          bytes.byteslice(12, 8)
-        end
-
-        def self.update_l4_length(bytes)
-          orig_length = string_get16be(bytes,2)
-          new_length = bytes.length
-          string_set16be(bytes,2, new_length)
-          new_length - orig_length
+        def self.tuple(bytes, offset)
+          bytes.slice(offset + 12, 8)
         end
 
         def self.icmp_protocol_id
@@ -90,36 +63,38 @@ module Xlat
 
         def self.parse(packet)
           bytes = packet.bytes
+          offset = packet.bytes_offset
 
-          return false if bytes.get_value(:U8, 0) != 0x45
+          return false if bytes.get_value(:U8, offset) != 0x45
           # tos?
           # totlen?
           # ignore identification
-          return false if bytes.get_value(:U16, 6) & 0xbfff != 0 # ignore fragments
+          return false if bytes.get_value(:U16, offset + 6) & 0xbfff != 0 # ignore fragments
 
           packet.l4_start = 20
 
-          #p bytes.chars.map { _1.ord.to_s(16).rjust(2,'0') }.join(' ')
-          proto = bytes.get_value(:U8, 9)
+          proto = bytes.get_value(:U8, offset + 9)
           packet.proto = proto
 
           true
         end
 
-        def self.apply(bytes, cs_delta, icmp_payload: false)
+        def self.apply(bytes, offset, cs_delta, icmp_payload)
           # decrement TTL
           unless icmp_payload
-            ttl = bytes.get_value(:U8, 8)
+            ttl = bytes.get_value(:U8, offset + 8)
             if ttl > 0
               ttl -= 1
-              bytes.set_value(:U8, 8, ttl)
+              bytes.set_value(:U8, offset + 8, ttl)
               cs_delta -= 0x0100 # checksum computation is performed per 2 octets
             end
           end
 
-          checksum = bytes.get_value(:U16, 10)
-          checksum = Ip.checksum_adjust(checksum, cs_delta)
-          bytes.set_value(:U16, 10, checksum)
+          if cs_delta != 0
+            checksum = bytes.get_value(:U16, offset + 10)
+            checksum = Ip.checksum_adjust(checksum, cs_delta)
+            bytes.set_value(:U16, offset + 10, checksum)
+          end
         end
       end
     end

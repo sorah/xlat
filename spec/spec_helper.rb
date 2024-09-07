@@ -16,3 +16,5 @@ config.run_all_when_everything_filtered = true
     c.syntax = :expect
   end
 end
+
+RSpec::Matchers.define_negated_matcher :not_change, :change

@@ -29,34 +29,23 @@ require 'xlat/protocols/icmp'
 module Xlat
   module Protocols
     class Tcpudp
-      attr_reader :src_port, :dest_port
       include Xlat::Common
 
-      def initialize(packet)
-        bytes = packet.l4_bytes
-        l4_start = packet.l4_bytes_offset
-
+      def initialize(packet, icmp_payload:)
         @packet = packet
-        @src_port, @dest_port = bytes.get_values([:U16, :U16], l4_start)
-        @orig_checksum = @src_port + @dest_port
+        @icmp_payload = icmp_payload
       end
 
-      def src_port=(n)
-        @src_port = n
-        @packet.l4_bytes.set_value(:U16, @packet.l4_bytes_offset, n)
-      end
-
-      def dest_port=(n)
-        @dest_port = n
-        @packet.l4_bytes.set_value(:U16, @packet.l4_bytes_offset + 2, n)
+      def parse
+        self
       end
 
       def tuple
-        @packet.l4_bytes.slice(@packet.l4_bytes_offset, 4)
+        @bytes.slice(@offset, 4)
       end
 
       def _adjust_checksum(checksum, cs_delta)
-        Ip.checksum_adjust(checksum, cs_delta + @src_port + @dest_port - @orig_checksum)
+        Ip.checksum_adjust(checksum, cs_delta)
       end
     end
   end

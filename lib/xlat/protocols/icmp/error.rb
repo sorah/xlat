@@ -38,13 +38,16 @@ module Xlat
         V6_TYPE_TIME_EXCEEDED = 3
         V6_TYPE_PARAMETER_PROBLEM = 4
 
-        attr_accessor :original
+        attr_accessor :payload_bytes
+        attr_accessor :payload_bytes_offset
 
         def _parse
           super
 
-          @original = Ip.parse(@packet.bytes.slice(@packet.l4_start + 8), icmp_payload: true)
-          return nil if @original.nil? || @original.version != @packet.version || @original.l4.nil?
+          packet = @packet
+
+          @payload_bytes = packet.l4_bytes
+          @payload_bytes_offset = packet.l4_bytes_offset + 8
 
           self
         end

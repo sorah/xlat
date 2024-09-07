@@ -23,42 +23,45 @@
 # SOFTWARE.
 
 
-
-require_relative './icmp'
-
 module Xlat
   module Protocols
     class Ip
-      attr_accessor :bytes
-      attr_accessor :proto
-      attr_accessor :l4_start
-      attr_accessor :l4_bytes
+      attr_accessor :bytes  # IO::Buffer containing L3 header
+      attr_accessor :bytes_offset  # Offset where L3 header begins within `bytes`
+      attr_accessor :proto  # L4 protocol ID
+      attr_accessor :l4_start  # L3 header length
       attr_accessor :l4
-      attr_accessor :cs_delta
-
-      attr_writer :l4_start_offset
+      attr_accessor :l4_bytes  # IO::Buffer containing L4 packet
+      attr_accessor :l4_bytes_offset  # Offset where L4 header begins within `l4_bytes`
+      attr_accessor :cs_delta  # Accumulated changes to be applied to L4 checksum
 
       attr_reader :version
 
-      def initialize(bytes, proto: nil, l4_bytes: nil, l4_start: nil, l4_bytes_offset: nil)
-        @bytes = bytes
-        @proto = proto
-        @l4_bytes = l4_bytes || bytes
-        @l4_bytes_offset = l4_bytes_offset
-        @l4_start = l4_start
-        @l4 = nil
-        @version = nil
-        @cs_delta = 0
+      def initialize(icmp_payload: false)
+        @icmp_payload = icmp_payload
+        @_tcp = Tcp.new(self, icmp_payload:)
+        @_udp = Udp.new(self, icmp_payload:)
       end
 
+      def self.parse(bytes)
+        new.parse(bytes:)
+      end
 
-      def _parse(icmp_payload)
-        bytes = @bytes
+      def parse(bytes:, bytes_offset: 0, l4_bytes: nil, l4_bytes_offset: nil)
+        @bytes = bytes
+        @bytes_offset = bytes_offset
+        @proto = nil
+        @version = nil
+        @l4_start = nil
+        @l4 = nil
+        @l4_bytes = l4_bytes
+        @l4_bytes_offset = l4_bytes_offset
+        @cs_delta = 0
 
         # mimimum size for IPv4
-        return nil if bytes.size < 20
+        return nil if bytes.size < bytes_offset + 20
 
-        case bytes.get_value(:U8, 0) >> 4
+        case bytes.get_value(:U8, bytes_offset) >> 4
         when 4
           @version = Ipv4
         when 6
@@ -69,11 +72,16 @@ module Xlat
 
         return nil unless @version.parse(self)
 
+        unless @l4_bytes
+          @l4_bytes = @bytes
+          @l4_bytes_offset = bytes_offset + @l4_start
+        end
+
         case @proto
         when Protocols::Udp::PROTOCOL_ID
-          @l4 = Protocols::Udp.parse(self, icmp_payload)
+          @l4 = @_udp.parse
         when Protocols::Tcp::PROTOCOL_ID
-          @l4 = Protocols::Tcp.parse(self, icmp_payload)
+          @l4 = @_tcp.parse
         when @version.icmp_protocol_id
           @l4 = Protocols::Icmp.parse(self)
         end
@@ -81,50 +89,35 @@ module Xlat
         self
       end
 
-      def self.parse(bytes, icmp_payload: false)
-        new(bytes)._parse(icmp_payload)
+      # Convert this packet into different IP version using the supplied buffer as header.
+      #
+      # @param version [Module] New version
+      # @param new_header_bytes [IO::Buffer] Buffer to hold L3 header.
+      #   The caller is responsible for populating the buffer with a proper content.
+      # @param cs_delta [Integer] Checksum delta in the pseudo header to be cancelled with the L4 checksum.
+      # @return [Ip] self
+      def convert_version!(version, new_header_bytes, cs_delta)
+        @bytes = new_header_bytes
+        @offset = 0
+        @version = version
+        @l4_start = new_header_bytes.size
+        @cs_delta += cs_delta
+        self
       end
 
       def total_length
-        if @l4_bytes_offset
-          @l4_start + (@l4_bytes.size - @l4_bytes_offset)
-        else
-          @bytes.size
-        end
-      end
-
-      def l4_bytes_offset
-        @l4_bytes_offset || @l4_start
-      end
-
-      def src_addr
-        @version.src_addr(@bytes)
-      end
-
-      def src_addr=(new_addr)
-        @cs_delta += @version.set_src_addr(@bytes, new_addr)
-      end
-
-      def dest_addr
-        @version.dest_addr(@bytes)
-      end
-
-      def dest_addr=(new_addr)
-        @cs_delta += @version.set_dest_addr(@bytes, new_addr)
+        @l4_start + (@l4_bytes.size - @l4_bytes_offset)
       end
 
       def tuple
-        @version.tuple(@bytes)
+        @version.tuple(@bytes, @bytes_offset)
       end
 
-      def update_l4_length
-        @cs_delta += @version.update_l4_length(@bytes)
-      end
-
-      def apply_changes(icmp_payload: false)
+      def apply_changes
         cs_delta = @cs_delta
-        @version.apply(@bytes, cs_delta, icmp_payload:)
+        @version.apply(@bytes, @bytes_offset, cs_delta, @icmp_payload)
         @l4&.apply(cs_delta)
+        @cs_delta = 0
       end
 
       def self.checksum(bytes, from = nil, len = nil)
@@ -181,6 +174,7 @@ module Xlat
   end
 end
 
+require_relative './icmp'
 require_relative './ip/ipv4'
 require_relative './ip/ipv6'
 require_relative './tcp'

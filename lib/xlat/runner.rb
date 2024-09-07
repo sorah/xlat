@@ -10,11 +10,12 @@ module Xlat
 
     def run
       buf = IO::Buffer.new(@adapter.mtu)
+      parser = Protocols::Ip.new
 
       loop do
         bytes = @adapter.read(buf)
 
-        pkt = Protocols::Ip.parse(bytes)
+        pkt = parser.parse(bytes:)
         unless pkt
           @logger&.info { "DISCARD: not parsable: #{bytes.inspect}" }
           next

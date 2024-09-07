@@ -31,27 +31,33 @@ module Xlat
       PROTOCOL_ID = 17
       CHECKSUM_OFFSET = 6
 
-      def self.parse(packet, icmp_payload)
-        return nil if packet.total_length < packet.l4_start + (icmp_payload ? 4 : 8)
+      def parse
+        packet = @packet
+        bytes = packet.l4_bytes
+        offset = packet.l4_bytes_offset
 
-        Udp.new(packet)
+        return nil if bytes.size < offset + (@icmp_payload ? 4 : 8)
+
+        super
       end
 
       def apply(cs_delta)
         return if cs_delta.zero?
 
-        return unless @packet.total_length >= @packet.l4_start + 8
-        bytes = @packet.l4_bytes
-        l4_start = @packet.l4_bytes_offset
+        packet = @packet
+        bytes = packet.l4_bytes
+        offset = packet.l4_bytes_offset
 
-        checksum = bytes.get_value(:U16, l4_start + 6)
+        return if bytes.size < offset + 8
+
+        checksum = bytes.get_value(:U16, offset + 6)
         return if checksum == 0 # TODO: in ipv6 this requires calculation
 
-        checksum = 0 if checksum == 65535
+        checksum = 0 if checksum == 0xFFFF
         checksum = _adjust_checksum(checksum, cs_delta)
-        checksum = 65535 if checksum == 0
+        checksum = 0xFFFF if checksum == 0
 
-        bytes.set_value(:U16, l4_start + 6, checksum)
+        bytes.set_value(:U16, offset + 6, checksum)
       end
     end
   end

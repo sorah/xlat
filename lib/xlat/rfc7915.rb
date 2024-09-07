@@ -34,7 +34,10 @@ module Xlat
       @new_header_buffer_in_use = false
       return_buffer_ownership
 
-      @inner_icmp = for_icmp ? nil : self.class.new(source_address_translator:, destination_address_translator:, for_icmp: true)
+      unless for_icmp
+        @inner_icmp = self.class.new(source_address_translator:, destination_address_translator:, for_icmp: true)
+        @inner_packet = Protocols::Ip.new(icmp_payload: true)
+      end
     end
 
     attr_reader :next_fragment_identifier
@@ -91,10 +94,8 @@ module Xlat
       #p ipv6_bytes.chars.map { _1.ord.to_s(16).rjust(2,'0') }.join(' ')
       #p new_header_buffer.chars.map { _1.ord.to_s(16).rjust(2,'0') }.join(' ')
 
-      ipv4_packet = Protocols::Ip.new(new_header_buffer, proto: Protocols::Ip::Ipv4, l4_bytes: ipv6_packet.l4_bytes, l4_bytes_offset: ipv6_packet.l4_bytes_offset)
-      ipv4_packet._parse(icmp_payload)
-      ipv4_packet.cs_delta = cs_delta
-      ipv4_packet.apply_changes(icmp_payload:)
+      ipv4_packet = ipv6_packet.convert_version!(Protocols::Ip::Ipv4, new_header_buffer, cs_delta)
+      ipv4_packet.apply_changes
 
       # Recompute checksum (this must be performed after Ip#apply_changes as it updates ipv4 checksum field along with l4 checksum field using delta,
       # while new_header_buffer has no prior checksum value)
@@ -156,10 +157,8 @@ module Xlat
 
       # TODO: generate udp checksum option (section 4.5.)
       # TODO: ICMPv4 => ICMPv6
-      ipv6_packet = Protocols::Ip.new(new_header_buffer, proto: Protocols::Ip::Ipv6, l4_bytes: ipv4_packet.l4_bytes, l4_bytes_offset: ipv4_packet.l4_bytes_offset)
-      ipv6_packet._parse(icmp_payload)
-      ipv6_packet.cs_delta = cs_delta # for upper-layer checksum incremental update
-      ipv6_packet.apply_changes(icmp_payload:)
+      ipv6_packet = ipv4_packet.convert_version!(Protocols::Ip::Ipv6, new_header_buffer, cs_delta)
+      ipv6_packet.apply_changes
 
       # TODO: Section 4.4.  Generation of ICMPv4 Error Message
 
@@ -335,7 +334,7 @@ module Xlat
 
       if translate_payload
         payload_offset = l4_bytes_offset+8
-        payload = Xlat::Protocols::Ip.parse(l4_bytes.slice(payload_offset))
+        payload = @inner_packet.parse(bytes: l4_bytes.slice(payload_offset))
         payload_translated = payload && @inner_icmp.translate_to_ipv4(payload)
         if payload_translated
           output = [
@@ -450,7 +449,7 @@ module Xlat
 
       if translate_payload
         payload_offset = l4_bytes_offset+8
-        payload = Xlat::Protocols::Ip.parse(l4_bytes.slice(payload_offset))
+        payload = @inner_packet.parse(bytes: l4_bytes.slice(payload_offset))
         # TODO: protocol version verification
         payload_translated = payload && @inner_icmp.translate_to_ipv6(payload)
         if payload_translated
