@@ -38,7 +38,12 @@ file 'doc/test_packets.xml' => ['doc', 'spec/test_packets.rb', 'Rakefile'] do |f
     }
   }.sort_by { _1[:source_location] }
 
-  pdml = Open3.popen2(*%W[tshark -n -r- -Tpdml]) do |stdin, stdout, *|
+  opts = {
+    'tcp.check_checksum' => 'TRUE',
+    'udp.check_checksum' => 'TRUE',
+    'ip.check_checksum' => 'TRUE',
+  }.map {|k, v| "-o#{k}:#{v}" }
+  pdml = Open3.popen2(*%W[tshark -n -r- -Tpdml], *opts) do |stdin, stdout, *|
     pcap = Xlat::Pcap.new(stdin)
     packets.each do |h|
       pcap.write(h[:value], ts: Time.at(0))
