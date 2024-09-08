@@ -177,6 +177,15 @@ RSpec.describe Xlat::Rfc7915 do
       end
     end
 
+    context "with icmp truncated payload" do
+      let!(:output) { translator.translate_to_ipv4(Xlat::Protocols::Ip.parse(TestPackets::TEST_PACKET_IPV6_ICMP_ADMIN_TRUNC.dup)) }
+
+      it "translates into ipv4" do
+        expect_packet_equal(4, TestPackets::TEST_PACKET_IPV4_ICMP_ADMIN_TRUNC, output)
+        assert_l4_checksum(4)
+      end
+    end
+
     context "with icmp payload + RFC 4884" do
       let!(:output) do
         ipv6 = TestPackets::TEST_PACKET_IPV6_ICMP_ADMIN.dup
@@ -263,6 +272,15 @@ RSpec.describe Xlat::Rfc7915 do
 
       it "translates into ipv6" do
         expect_packet_equal(6, TestPackets::TEST_PACKET_IPV6_ICMP_ADMIN, output)
+        assert_l4_checksum(6)
+      end
+    end
+
+    context "with truncated icmp payload" do
+      let!(:output) { translator.translate_to_ipv6(Xlat::Protocols::Ip.parse(TestPackets::TEST_PACKET_IPV4_ICMP_ADMIN_TRUNC.dup)) }
+
+      it "translates into ipv6" do
+        expect_packet_equal(6, TestPackets::TEST_PACKET_IPV6_ICMP_ADMIN_TRUNC, output)
         assert_l4_checksum(6)
       end
     end

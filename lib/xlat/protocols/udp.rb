@@ -33,10 +33,10 @@ module Xlat
 
       def parse
         packet = @packet
-        bytes = packet.l4_bytes
-        offset = packet.l4_bytes_offset
+        return nil if packet.l4_bytes_length < (@icmp_payload ? 4 : 8)
 
-        return nil if bytes.size < offset + (@icmp_payload ? 4 : 8)
+        # bytes = packet.l4_bytes
+        # offset = packet.l4_bytes_offset
 
         super
       end
@@ -45,10 +45,10 @@ module Xlat
         return if cs_delta.zero?
 
         packet = @packet
+        return if packet.l4_bytes_length < 8
+
         bytes = packet.l4_bytes
         offset = packet.l4_bytes_offset
-
-        return if bytes.size < offset + 8
 
         checksum = bytes.get_value(:U16, offset + 6)
         return if checksum == 0 # TODO: in ipv6 this requires calculation

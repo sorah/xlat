@@ -110,7 +110,7 @@ module Xlat
       if icmp_output
         @output.concat(icmp_output)
       else
-        @output << ipv4_packet.l4_bytes.slice(ipv4_packet.l4_bytes_offset)
+        @output << ipv4_packet.l4_bytes.slice(ipv4_packet.l4_bytes_offset, ipv4_packet.l4_bytes_length)
       end
       @output
     end
@@ -166,7 +166,7 @@ module Xlat
       if icmp_output
         @output.concat(icmp_output)
       else
-        @output << ipv6_packet.l4_bytes.slice(ipv6_packet.l4_bytes_offset)
+        @output << ipv6_packet.l4_bytes.slice(ipv6_packet.l4_bytes_offset, ipv6_packet.l4_bytes_length)
       end
       @output
     end

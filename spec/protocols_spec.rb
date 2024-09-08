@@ -17,6 +17,7 @@ RSpec.describe Xlat::Protocols::Ip do
         expect(ip.l4).to be_kind_of Xlat::Protocols::Tcp
         expect(ip.l4_bytes).to be ip.bytes
         expect(ip.l4_bytes_offset).to eq 20
+        expect(ip.l4_bytes_length).to eq 33
       end
     end
 
@@ -29,6 +30,7 @@ RSpec.describe Xlat::Protocols::Ip do
         expect(ip.l4).to be_kind_of Xlat::Protocols::Tcp
         expect(ip.l4_bytes).to be ip.bytes
         expect(ip.l4_bytes_offset).to eq 40
+        expect(ip.l4_bytes_length).to eq 33
       end
     end
 
@@ -41,6 +43,7 @@ RSpec.describe Xlat::Protocols::Ip do
         expect(ip.l4).to be_kind_of Xlat::Protocols::Udp
         expect(ip.l4_bytes).to be ip.bytes
         expect(ip.l4_bytes_offset).to eq 20
+        expect(ip.l4_bytes_length).to eq 9
       end
     end
 
@@ -52,6 +55,7 @@ RSpec.describe Xlat::Protocols::Ip do
         expect(ip.l4).to be_kind_of Xlat::Protocols::Udp
         expect(ip.l4_bytes).to be ip.bytes
         expect(ip.l4_bytes_offset).to eq 40
+        expect(ip.l4_bytes_length).to eq 9
       end
     end
 
@@ -64,6 +68,7 @@ RSpec.describe Xlat::Protocols::Ip do
         expect(ip.l4).to be_kind_of Xlat::Protocols::Icmp::Echo
         expect(ip.l4_bytes).to be ip.bytes
         expect(ip.l4_bytes_offset).to eq 20
+        expect(ip.l4_bytes_length).to eq 9
         expect(ip.l4.type).to eq 8
         expect(ip.l4.code).to eq 0
       end
@@ -77,6 +82,7 @@ RSpec.describe Xlat::Protocols::Ip do
         expect(ip.l4).to be_kind_of Xlat::Protocols::Icmp::Echo
         expect(ip.l4_bytes).to be ip.bytes
         expect(ip.l4_bytes_offset).to eq 20
+        expect(ip.l4_bytes_length).to eq 9
         expect(ip.l4.type).to eq 0
         expect(ip.l4.code).to eq 0
       end
@@ -90,6 +96,7 @@ RSpec.describe Xlat::Protocols::Ip do
         expect(ip.l4).to be_kind_of Xlat::Protocols::Icmp::Echo
         expect(ip.l4_bytes).to be ip.bytes
         expect(ip.l4_bytes_offset).to eq 40
+        expect(ip.l4_bytes_length).to eq 9
         expect(ip.l4.type).to eq 128
         expect(ip.l4.code).to eq 0
       end
@@ -103,6 +110,7 @@ RSpec.describe Xlat::Protocols::Ip do
         expect(ip.l4).to be_kind_of Xlat::Protocols::Icmp::Echo
         expect(ip.l4_bytes).to be ip.bytes
         expect(ip.l4_bytes_offset).to eq 40
+        expect(ip.l4_bytes_length).to eq 9
         expect(ip.l4.type).to eq 129
         expect(ip.l4.code).to eq 0
       end
@@ -116,6 +124,7 @@ RSpec.describe Xlat::Protocols::Ip do
         expect(ip.l4).to be_kind_of Xlat::Protocols::Icmp::Error
         expect(ip.l4_bytes).to be ip.bytes
         expect(ip.l4_bytes_offset).to eq 20
+        expect(ip.l4_bytes_length).to eq 37
         expect(ip.l4.type).to eq 3
         expect(ip.l4.code).to eq 10
         expect(ip.l4.payload_bytes).to be ip.bytes
@@ -129,6 +138,8 @@ RSpec.describe Xlat::Protocols::Ip do
         expect(inner.version).to eq Xlat::Protocols::Ip::Ipv4
         expect(inner.proto).to eq 17
         expect(inner.l4).to be_kind_of Xlat::Protocols::Udp
+        expect(inner.l4_bytes_offset).to eq 48
+        expect(inner.l4_bytes_length).to eq 9
       end
     end
 
@@ -153,6 +164,61 @@ RSpec.describe Xlat::Protocols::Ip do
         expect(inner.version).to eq Xlat::Protocols::Ip::Ipv6
         expect(inner.proto).to eq 17
         expect(inner.l4).to be_kind_of Xlat::Protocols::Udp
+        expect(inner.l4_bytes_offset).to eq 88
+        expect(inner.l4_bytes_length).to eq 9
+      end
+    end
+
+    it 'parses IPv4 ICMP Error with truncated payload' do
+      ip = subject.parse(bytes: TestPackets::TEST_PACKET_IPV4_ICMP_ADMIN_TRUNC)
+      aggregate_failures do
+        expect(ip).to be_kind_of Xlat::Protocols::Ip
+        expect(ip.version).to eq Xlat::Protocols::Ip::Ipv4
+        expect(ip.l4).to be_kind_of Xlat::Protocols::Icmp::Error
+        expect(ip.l4_bytes).to be ip.bytes
+        expect(ip.l4_bytes_offset).to eq 20
+        expect(ip.l4_bytes_length).to eq 37
+        expect(ip.l4.type).to eq 3
+        expect(ip.l4.code).to eq 10
+        expect(ip.l4.payload_bytes).to be ip.bytes
+        expect(ip.l4.payload_bytes_offset).to eq 28
+      end
+
+      inner = Xlat::Protocols::Ip.new(icmp_payload: true)
+        .parse(bytes: ip.l4.payload_bytes, bytes_offset: ip.l4.payload_bytes_offset)
+      aggregate_failures do
+        expect(inner).to be_kind_of Xlat::Protocols::Ip
+        expect(inner.version).to eq Xlat::Protocols::Ip::Ipv4
+        expect(inner.proto).to eq 17
+        expect(inner.l4).to be_kind_of Xlat::Protocols::Udp
+        expect(inner.l4_bytes_offset).to eq 48
+        expect(inner.l4_bytes_length).to eq 9
+      end
+    end
+
+    it 'parses IPv6 ICMP Error with truncated payload' do
+      ip = subject.parse(bytes: TestPackets::TEST_PACKET_IPV6_ICMP_ADMIN_TRUNC)
+      aggregate_failures do
+        expect(ip).to be_kind_of Xlat::Protocols::Ip
+        expect(ip.version).to eq Xlat::Protocols::Ip::Ipv6
+        expect(ip.l4).to be_kind_of Xlat::Protocols::Icmp::Error
+        expect(ip.l4_bytes).to be ip.bytes
+        expect(ip.l4_bytes_offset).to eq 40
+        expect(ip.l4.type).to eq 1
+        expect(ip.l4.code).to eq 1
+        expect(ip.l4.payload_bytes).to be ip.bytes
+        expect(ip.l4.payload_bytes_offset).to eq 48
+      end
+
+      inner = Xlat::Protocols::Ip.new(icmp_payload: true)
+        .parse(bytes: ip.l4.payload_bytes, bytes_offset: ip.l4.payload_bytes_offset)
+      aggregate_failures do
+        expect(inner).to be_kind_of Xlat::Protocols::Ip
+        expect(inner.version).to eq Xlat::Protocols::Ip::Ipv6
+        expect(inner.proto).to eq 17
+        expect(inner.l4).to be_kind_of Xlat::Protocols::Udp
+        expect(inner.l4_bytes_offset).to eq 88
+        expect(inner.l4_bytes_length).to eq 9
       end
     end
   end
