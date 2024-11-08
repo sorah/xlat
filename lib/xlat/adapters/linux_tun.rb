@@ -19,6 +19,7 @@ module Xlat
         @mtu = 1500
         @io = File.open(DEV_TUN, 'r+:BINARY')
         @io.ioctl(TUNSETIFF, [@ifname, IFF_TUN | IFF_NO_PI].pack("a#{Socket::IFNAMSIZ}s!"))
+        @readvec = IOVector.new(1)
       end
 
       attr_reader :mtu
@@ -31,12 +32,14 @@ module Xlat
       end
 
       def read(buf)
-        size = IOBufferExt.readv(@io, [buf])
+        @readvec.clear
+        @readvec.add(buf, 0, buf.size)
+        size = @readvec.read(@io)
         buf.slice(0, size)
       end
 
-      def write(*bufs)
-        IOBufferExt.writev(@io, bufs)
+      def write(vec)
+        vec.write(@io)
       end
 
       def close

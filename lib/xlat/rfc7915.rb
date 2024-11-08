@@ -30,7 +30,6 @@ module Xlat
 
       @ipv4_new_header_buffer = IO::Buffer.new(20)
       @ipv6_new_header_buffer = IO::Buffer.new(40)
-      @output = []
       @new_header_buffer_in_use = false
       return_buffer_ownership
 
@@ -48,7 +47,7 @@ module Xlat
     end
 
     # Returns array of bytestrings to send as a IPv4 packet. May update original packet content.
-    def translate_to_ipv4(ipv6_packet)
+    def translate_to_ipv4(ipv6_packet, outvec)
       raise BufferInUse if @new_header_buffer_in_use
       raise ArgumentError unless ipv6_packet.version.to_i == 6
       icmp_payload = @inner_icmp.nil?
@@ -85,10 +84,16 @@ module Xlat
 
       # TODO: DF bit
 
+      outvec.add(new_header_buffer, 0, new_header_buffer.size)
+
       if !icmp_payload && ipv6_packet.proto == 58 # icmpv6
-        icmp_result, icmp_output = translate_icmpv6_to_icmpv4(ipv6_packet, new_header_buffer)
+        icmp_result, icmp_output = translate_icmpv6_to_icmpv4(ipv6_packet, new_header_buffer, outvec)
         return return_buffer_ownership() unless icmp_result
         cs_delta += icmp_result
+      end
+
+      unless icmp_output
+        outvec.add(ipv4_packet.l4_bytes, ipv4_packet.l4_bytes_offset)
       end
 
       #p ipv6_bytes.chars.map { _1.ord.to_s(16).rjust(2,'0') }.join(' ')
@@ -106,17 +111,11 @@ module Xlat
       # TODO: Section 5.4. Generation of ICMPv6 Error Messages
       # TODO: Section 5.1.1. IPv6 Fragment Processing
 
-      @output << new_header_buffer
-      if icmp_output
-        @output.concat(icmp_output)
-      else
-        @output << ipv4_packet.l4_bytes.slice(ipv4_packet.l4_bytes_offset)
-      end
-      @output
+      outvec
     end
 
     # Returns array of bytestrings to send as a IPv6 packet. May update original packet content.
-    def translate_to_ipv6(ipv4_packet)
+    def translate_to_ipv6(ipv4_packet, outvec)
       raise BufferInUse if @new_header_buffer_in_use
       raise ArgumentError unless ipv4_packet.version.to_i == 4
       icmp_payload = @inner_icmp.nil?

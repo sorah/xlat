@@ -11,6 +11,7 @@ module Xlat
     def run
       buf = IO::Buffer.new(@adapter.mtu)
       parser = Protocols::Ip.new
+      output = IOVector.new(5)
 
       loop do
         bytes = @adapter.read(buf)
@@ -23,14 +24,14 @@ module Xlat
 
         case
         when pkt.version == Protocols::Ip::Ipv4
-          output = @translator.translate_to_ipv6(pkt)
+          translated = @translator.translate_to_ipv6(pkt, output)
         when pkt.version == Protocols::Ip::Ipv6
-          output = @translator.translate_to_ipv4(pkt)
+          translated = @translator.translate_to_ipv4(pkt, output)
         else
           fail 'unknown IP version'
         end
 
-        unless output
+        unless translated
           @logger&.info { "DISCARD: not translatable: #{bytes.inspect}" }
           next
         end
