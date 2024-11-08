@@ -9,3 +9,4 @@ crate-type = ["cdylib"]
 [dependencies]
 magnus = { version = "0.7", features = ["rb-sys"] }
 rb-sys = { version = "0.9" }
+alloca = { version = "0.4.0" }

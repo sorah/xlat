@@ -2,12 +2,13 @@ use std::{mem::MaybeUninit, ptr};
 
 use magnus::{
     rb_sys::{AsRawValue as _, FromRawValue as _},
-    value::{Lazy, ReprValue as _},
-    Error, RClass, Ruby, TryConvert, Value,
+    value::{InnerValue, Lazy, ReprValue},
+    Error, IntoValue, RClass, RTypedData, Ruby, TryConvert, Value,
 };
 
 #[derive(Clone, Copy)]
-pub struct IOBuffer(Value);
+#[repr(transparent)]
+pub struct IOBuffer(RTypedData);
 
 static RB_C_IO_BUFFER: Lazy<RClass> = Lazy::new(|_ruby| {
     let val = unsafe { Value::from_raw(rb_sys::rb_cIOBuffer) };
@@ -16,11 +17,9 @@ static RB_C_IO_BUFFER: Lazy<RClass> = Lazy::new(|_ruby| {
 
 impl IOBuffer {
     pub fn from_value(val: Value) -> Option<Self> {
-        if val.is_kind_of(Ruby::get_with(val).get_inner(&RB_C_IO_BUFFER)) {
-            Some(IOBuffer(val))
-        } else {
-            None
-        }
+        RTypedData::from_value(val)
+            .filter(|_| val.is_kind_of(RB_C_IO_BUFFER.get_inner_with(&Ruby::get_with(val))))
+            .map(Self)
     }
 
     pub fn get_bytes_for_reading(&self) -> *const [u8] {
@@ -63,5 +62,12 @@ impl TryConvert for IOBuffer {
                 },),
             )
         })
+    }
+}
+
+impl IntoValue for IOBuffer {
+    #[inline]
+    fn into_value_with(self, _: &Ruby) -> Value {
+        self.0.as_value()
     }
 }
