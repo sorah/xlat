@@ -28,6 +28,7 @@ module Xlat
     class Ip
       attr_accessor :bytes  # IO::Buffer containing L3 header
       attr_accessor :bytes_offset  # Offset where L3 header begins within `bytes`
+      attr_accessor :bytes_length  # Length of L3 datagram within `bytes`
       attr_accessor :proto  # L4 protocol ID
       attr_accessor :l4_start  # L3 header length
       attr_accessor :l4
@@ -48,9 +49,10 @@ module Xlat
         new.parse(bytes:)
       end
 
-      def parse(bytes:, bytes_offset: 0, l4_bytes: nil, l4_bytes_offset: nil)
+      def parse(bytes:, bytes_offset: 0, bytes_length: bytes.size - bytes_offset, l4_bytes: nil, l4_bytes_offset: nil)
         @bytes = bytes
         @bytes_offset = bytes_offset
+        @bytes_length = bytes_length
         @proto = nil
         @version = nil
         @l4_start = nil
@@ -61,7 +63,7 @@ module Xlat
         @cs_delta = 0
 
         # mimimum size for IPv4
-        return nil if bytes.size < bytes_offset + 20
+        return nil if bytes_length < 20
 
         case bytes.get_value(:U8, bytes_offset) >> 4
         when 4
@@ -95,12 +97,13 @@ module Xlat
         unless @l4_bytes
           @l4_bytes = @bytes
           @l4_bytes_offset = @bytes_offset + start
+          @l4_bytes_length = @bytes_length - start
         end
 
-        if @l4_bytes.size < @l4_bytes_offset + length
+        if @l4_bytes_length < length
           if @icmp_payload
             # allow truncation in ICMP payload
-            length = @l4_bytes.size - @l4_bytes_offset
+            length = @l4_bytes_length
             return false if length < 0
           else
             return false
@@ -121,7 +124,8 @@ module Xlat
       # @return [Ip] self
       def convert_version!(version, new_header_bytes, cs_delta)
         @bytes = new_header_bytes
-        @offset = 0
+        @bytes_offset = 0
+        @bytes_length = new_header_bytes.size
         @version = version
         @l4_start = new_header_bytes.size
         @cs_delta += cs_delta

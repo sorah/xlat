@@ -132,7 +132,7 @@ RSpec.describe Xlat::Protocols::Ip do
       end
 
       inner = Xlat::Protocols::Ip.new(icmp_payload: true)
-        .parse(bytes: ip.l4.payload_bytes, bytes_offset: ip.l4.payload_bytes_offset)
+        .parse(bytes: ip.l4.payload_bytes, bytes_offset: ip.l4.payload_bytes_offset, bytes_length: ip.l4.payload_bytes_length)
       aggregate_failures do
         expect(inner).to be_kind_of Xlat::Protocols::Ip
         expect(inner.version).to eq Xlat::Protocols::Ip::Ipv4
@@ -158,7 +158,7 @@ RSpec.describe Xlat::Protocols::Ip do
       end
 
       inner = Xlat::Protocols::Ip.new(icmp_payload: true)
-        .parse(bytes: ip.l4.payload_bytes, bytes_offset: ip.l4.payload_bytes_offset)
+        .parse(bytes: ip.l4.payload_bytes, bytes_offset: ip.l4.payload_bytes_offset, bytes_length: ip.l4.payload_bytes_length)
       aggregate_failures do
         expect(inner).to be_kind_of Xlat::Protocols::Ip
         expect(inner.version).to eq Xlat::Protocols::Ip::Ipv6
@@ -185,7 +185,7 @@ RSpec.describe Xlat::Protocols::Ip do
       end
 
       inner = Xlat::Protocols::Ip.new(icmp_payload: true)
-        .parse(bytes: ip.l4.payload_bytes, bytes_offset: ip.l4.payload_bytes_offset)
+        .parse(bytes: ip.l4.payload_bytes, bytes_offset: ip.l4.payload_bytes_offset, bytes_length: ip.l4.payload_bytes_length)
       aggregate_failures do
         expect(inner).to be_kind_of Xlat::Protocols::Ip
         expect(inner.version).to eq Xlat::Protocols::Ip::Ipv4
@@ -211,7 +211,7 @@ RSpec.describe Xlat::Protocols::Ip do
       end
 
       inner = Xlat::Protocols::Ip.new(icmp_payload: true)
-        .parse(bytes: ip.l4.payload_bytes, bytes_offset: ip.l4.payload_bytes_offset)
+        .parse(bytes: ip.l4.payload_bytes, bytes_offset: ip.l4.payload_bytes_offset, bytes_length: ip.l4.payload_bytes_length)
       aggregate_failures do
         expect(inner).to be_kind_of Xlat::Protocols::Ip
         expect(inner.version).to eq Xlat::Protocols::Ip::Ipv6
