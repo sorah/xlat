@@ -38,16 +38,19 @@ module Xlat
         V6_TYPE_TIME_EXCEEDED = 3
         V6_TYPE_PARAMETER_PROBLEM = 4
 
-        attr_accessor :payload_bytes
-        attr_accessor :payload_bytes_offset
+        attr_reader :payload_bytes
+        attr_reader :payload_bytes_offset
+        attr_reader :payload_bytes_length
 
         def _parse
           super
+          # Base.parse ensures packet.l4_bytes_length >= 8
 
           packet = @packet
 
           @payload_bytes = packet.l4_bytes
           @payload_bytes_offset = packet.l4_bytes_offset + 8
+          @payload_bytes_length = packet.l4_bytes_length - 8
 
           self
         end

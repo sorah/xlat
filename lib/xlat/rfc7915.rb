@@ -335,8 +335,7 @@ module Xlat
       end
 
       if translate_payload
-        payload_offset = l4_bytes_offset+8
-        payload = @inner_packet.parse(bytes: l4_bytes.slice(payload_offset))
+        payload = @inner_packet.parse(bytes: icmpv6.payload_bytes, bytes_offset: icmpv6.payload_bytes_offset, bytes_length: icmpv6.payload_bytes_length)
         payload_translated = payload && @inner_icmp.translate_to_ipv4(payload)
         if payload_translated
           output = [
@@ -450,8 +449,7 @@ module Xlat
       end
 
       if translate_payload
-        payload_offset = l4_bytes_offset+8
-        payload = @inner_packet.parse(bytes: l4_bytes.slice(payload_offset))
+        payload = @inner_packet.parse(bytes: icmpv4.payload_bytes, bytes_offset: icmpv4.payload_bytes_offset, bytes_length: icmpv4.payload_bytes_length)
         # TODO: protocol version verification
         payload_translated = payload && @inner_icmp.translate_to_ipv6(payload)
         if payload_translated
