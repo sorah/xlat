@@ -53,7 +53,7 @@ module Xlat
           bytes = packet.l4_bytes
           offset = packet.l4_bytes_offset
 
-          return nil if bytes.size - offset < 8
+          return nil if packet.l4_bytes_length < 8
 
           type = bytes.get_value(:U8, offset)
           icmp = packet.version.new_icmp(packet, type)

@@ -65,13 +65,15 @@ module Xlat
           bytes = packet.bytes
           offset = packet.bytes_offset
 
-          return false if bytes.get_value(:U8, offset) != 0x45
+          return false if bytes.get_value(:U8, offset) != 0x45  # TODO: handle IPv4 options
           # tos?
-          # totlen?
+
+          total_length = bytes.get_value(:U16, offset + 2)
+          return false if total_length < 20
+          return false unless packet.set_l4_region(20, total_length - 20)
+
           # ignore identification
           return false if bytes.get_value(:U16, offset + 6) & 0xbfff != 0 # ignore fragments
-
-          packet.l4_start = 20
 
           proto = bytes.get_value(:U8, offset + 9)
           packet.proto = proto

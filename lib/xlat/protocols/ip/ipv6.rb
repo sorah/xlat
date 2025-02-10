@@ -70,15 +70,15 @@ module Xlat
           bytes = packet.bytes
           offset = packet.bytes_offset
 
-          return false if bytes.size < 40
+          return false if packet.bytes_length < 40
 
+          return false unless packet.set_l4_region(40, bytes.get_value(:U16, offset + 4))
           proto = bytes.get_value(:U8, offset + 6)
 
           # drop packets containing IPv6 extensions (RFC 7045 grudgingly acknowledges existence of such middleboxes)
           return false if EXTENSIONS[proto]
 
           packet.proto = proto
-          packet.l4_start = 40
 
           true
         end

@@ -55,6 +55,7 @@ module Xlat
       @new_header_buffer_in_use = true
       new_header_buffer = @ipv4_new_header_buffer
       ipv6_bytes = ipv6_packet.bytes
+      ipv6_bytes_offset = ipv6_packet.bytes_offset
 
       cs_delta = 0 # delta for incremental update of upper-layer checksum fields
 
@@ -64,7 +65,7 @@ module Xlat
       # FIXME: ToS ignored
 
       # Total Length = copy from IPv6; may be updated in later step
-      ipv6_length = ipv6_bytes.get_value(:U16, 4)
+      ipv6_length = ipv6_bytes.get_value(:U16, ipv6_bytes_offset + 4)
       ipv4_length = ipv6_length + 20
       # not considering as a checksum delta because upper layer packet length doesn't take this into account; cs_delta += ipv6_length - ipv4_length
       new_header_buffer.set_value(:U16, 2, ipv4_length)
@@ -73,14 +74,14 @@ module Xlat
       new_header_buffer.set_value(:U16, 4, make_fragment_id())
 
       # TTL = copy from IPv6
-      new_header_buffer.set_value(:U8, 8, ipv6_bytes.get_value(:U8, 7))
+      new_header_buffer.set_value(:U8, 8, ipv6_bytes.get_value(:U8, ipv6_bytes_offset + 7))
 
       # Protocol = copy from IPv6; may be updated in later step for ICMPv6=>4 conversion
       new_header_buffer.set_value(:U8, 9, ipv6_packet.proto)
 
       # Source and Destination address
-      cs_delta_a = @source_address_translator.translate_address_to_ipv4(ipv6_bytes.slice(8,16), new_header_buffer, 12) or return return_buffer_ownership()
-      cs_delta_b = @destination_address_translator.translate_address_to_ipv4(ipv6_bytes.slice(24,16), new_header_buffer, 16) or return return_buffer_ownership()
+      cs_delta_a = @source_address_translator.translate_address_to_ipv4(ipv6_bytes.slice(ipv6_bytes_offset + 8,16), new_header_buffer, 12) or return return_buffer_ownership()
+      cs_delta_b = @destination_address_translator.translate_address_to_ipv4(ipv6_bytes.slice(ipv6_bytes_offset + 24,16), new_header_buffer, 16) or return return_buffer_ownership()
       cs_delta += cs_delta_a + cs_delta_b
 
       # TODO: DF bit
@@ -110,7 +111,7 @@ module Xlat
       if icmp_output
         @output.concat(icmp_output)
       else
-        @output << ipv4_packet.l4_bytes.slice(ipv4_packet.l4_bytes_offset)
+        @output << ipv4_packet.l4_bytes.slice(ipv4_packet.l4_bytes_offset, ipv4_packet.l4_bytes_length)
       end
       @output
     end
@@ -124,6 +125,7 @@ module Xlat
       # TODO: ignore extension
       @new_header_buffer_in_use = true
       ipv4_bytes = ipv4_packet.bytes
+      ipv4_bytes_offset = ipv4_packet.bytes_offset
       new_header_buffer = @ipv6_new_header_buffer
       cs_delta = 0 # delta for incremental update of upper-layer checksum fields
 
@@ -133,7 +135,7 @@ module Xlat
       # Flow label = 0
 
       # Total Length = copy from IPv4; may be updated in later step
-      ipv4_length = ipv4_bytes.get_value(:U16, 2)
+      ipv4_length = ipv4_bytes.get_value(:U16, ipv4_bytes_offset + 2)
       ipv6_length = ipv4_length - 20
       # not considering as a checksum delta because upper layer packet length doesn't take this into account; cs_delta += ipv4_length - ipv6_length
       new_header_buffer.set_value(:U16, 4, ipv6_length)
@@ -142,11 +144,11 @@ module Xlat
       new_header_buffer.set_value(:U8, 6, ipv4_packet.proto)
 
       # Hop limit = copy from IPv4
-      new_header_buffer.set_value(:U8, 7, ipv4_bytes.get_value(:U8, 8))
+      new_header_buffer.set_value(:U8, 7, ipv4_bytes.get_value(:U8, ipv4_bytes_offset + 8))
 
       # Source and Destination address
-      cs_delta_a = @destination_address_translator.translate_address_to_ipv6(ipv4_bytes.slice(12,4), new_header_buffer, 8) or return return_buffer_ownership()
-      cs_delta_b = @source_address_translator.translate_address_to_ipv6(ipv4_bytes.slice(16,4), new_header_buffer, 24) or return return_buffer_ownership()
+      cs_delta_a = @destination_address_translator.translate_address_to_ipv6(ipv4_bytes.slice(ipv4_bytes_offset + 12,4), new_header_buffer, 8) or return return_buffer_ownership()
+      cs_delta_b = @source_address_translator.translate_address_to_ipv6(ipv4_bytes.slice(ipv4_bytes_offset + 16,4), new_header_buffer, 24) or return return_buffer_ownership()
       cs_delta += cs_delta_a + cs_delta_b
 
       if !icmp_payload && ipv4_packet.proto == 1 # icmpv4
@@ -166,7 +168,7 @@ module Xlat
       if icmp_output
         @output.concat(icmp_output)
       else
-        @output << ipv6_packet.l4_bytes.slice(ipv6_packet.l4_bytes_offset)
+        @output << ipv6_packet.l4_bytes.slice(ipv6_packet.l4_bytes_offset, ipv6_packet.l4_bytes_length)
       end
       @output
     end
@@ -333,8 +335,7 @@ module Xlat
       end
 
       if translate_payload
-        payload_offset = l4_bytes_offset+8
-        payload = @inner_packet.parse(bytes: l4_bytes.slice(payload_offset))
+        payload = @inner_packet.parse(bytes: icmpv6.payload_bytes, bytes_offset: icmpv6.payload_bytes_offset, bytes_length: icmpv6.payload_bytes_length)
         payload_translated = payload && @inner_icmp.translate_to_ipv4(payload)
         if payload_translated
           output = [
@@ -448,8 +449,7 @@ module Xlat
       end
 
       if translate_payload
-        payload_offset = l4_bytes_offset+8
-        payload = @inner_packet.parse(bytes: l4_bytes.slice(payload_offset))
+        payload = @inner_packet.parse(bytes: icmpv4.payload_bytes, bytes_offset: icmpv4.payload_bytes_offset, bytes_length: icmpv4.payload_bytes_length)
         # TODO: protocol version verification
         payload_translated = payload && @inner_icmp.translate_to_ipv6(payload)
         if payload_translated

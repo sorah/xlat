@@ -255,6 +255,80 @@ module TestPackets
     %w(af),
   ]
 
+  TEST_PACKET_IPV4_ICMP_ADMIN_TRUNC = buffer [
+    # ipv4
+    %w(45 00),
+    %w(00 39), # total length (20+8+20+8+1=57)
+    %w(c3 98), # identification
+    %w(00 00), # flags
+    %w(40), # ttl
+    %w(01), # protocol
+    %w(33 1c), # checksum
+    %w(c0 00 02 07), # src
+    %w(c0 00 02 08), # dst
+
+    # icmp
+    %w(03 0a), # type=3,code=10 (unreachable admin prohibited)
+    %w(8c 54), # checksum
+    %w(00 00 00 00), # unused
+
+    # payload ipv4
+    %w(45 00),
+    %w(00 24), # total length (20+8+8=36)
+    %w(c3 98), # identification
+    %w(00 00), # flags
+    %w(40), # ttl
+    %w(11), # protocol
+    %w(33 2b), # checksum
+    %w(c0 00 02 02), # src
+    %w(c0 00 02 03), # dst
+
+    # payload udp
+    %w(c1 5b), # src port
+    %w(00 35), # dst port
+    %w(00 10), # length
+    %w(ff ff), # checksum
+
+    # payload
+    %w(af),
+
+    # truncated (7 octets)
+  ]
+
+  TEST_PACKET_IPV6_ICMP_ADMIN_TRUNC = buffer [
+    # ipv6
+    %w(60 00 00 00), # version, qos, flow label
+    %w(00 39), # payload length (8+40+8+1=57)
+    %w(3a), # next header
+    %w(40), # hop limit
+    %w(20 01 0d b8 00 60 00 00 00 00 00 00 c0 00 02 07), # src
+    %w(20 01 0d b8 00 64 00 00 00 00 00 00 c0 00 02 08), # dst
+
+    # icmp
+    %w(01 01), # type=1,code=1 (unreachable admin prohibited)
+    %w(b8 4c), # checksum
+    %w(00 00 00 00), # unused
+
+    # ipv6
+    %w(60 00 00 00), # version, qos, flow label
+    %w(00 10), # payload length (8+8=16)
+    %w(11), # next header
+    %w(40), # hop limit
+    %w(00 64 ff 9b 00 01 ff fe 00 00 00 00 c0 00 02 02), # src
+    %w(00 64 ff 9b 00 00 00 00 00 00 00 00 c0 00 02 03), # dst
+
+    # udp
+    %w(c1 5b), # src port
+    %w(00 35), # dst port
+    %w(00 10), # length
+    %w(ff ff), # checksum
+
+    # payload
+    %w(af),
+
+    # truncated (7 octets)
+  ]
+
   TEST_PACKET_IPV4_ICMP_MTU = buffer [
     # ipv4
     %w(45 00),
