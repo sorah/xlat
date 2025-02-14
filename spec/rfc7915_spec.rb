@@ -230,6 +230,14 @@ RSpec.describe Xlat::Rfc7915 do
         expect_packet_equal(4, TestPackets::TEST_PACKET_IPV4_ETHERIP, output)
       end
     end
+
+    context "with ICMP6 incomplete header" do
+      let!(:output) {  translator.translate_to_ipv4(Xlat::Protocols::Ip.parse(TestPackets::TEST_PACKET_IPV6_ICMP_INCOMPLETE_HDR.dup)) }
+
+      it "is discarded without error" do
+        expect(output).to be_nil
+      end
+    end
   end
 
   describe "#translate_to_ipv6" do
@@ -341,14 +349,6 @@ RSpec.describe Xlat::Rfc7915 do
 
     context "with ICMP incomplete header" do
       let!(:output) {  translator.translate_to_ipv6(Xlat::Protocols::Ip.parse(TestPackets::TEST_PACKET_IPV4_ICMP_INCOMPLETE_HDR.dup)) }
-
-      it "is discarded without error" do
-        expect(output).to be_nil
-      end
-    end
-
-    context "with ICMP6 incomplete header" do
-      let!(:output) {  translator.translate_to_ipv4(Xlat::Protocols::Ip.parse(TestPackets::TEST_PACKET_IPV6_ICMP_INCOMPLETE_HDR.dup)) }
 
       it "is discarded without error" do
         expect(output).to be_nil
