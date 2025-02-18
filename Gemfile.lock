@@ -8,16 +8,14 @@ GEM
   remote: https://rubygems.org/
   specs:
     diff-lcs (1.5.1)
-    pf2 (0.6.0)
+    pf2 (0.8.0)
       rake-compiler
-      rb_sys (~> 0.9.63)
+      rb_sys (= 0.9.105)
       webrick
     rake (13.2.1)
     rake-compiler (1.2.9)
       rake
-    rake-compiler-dock (1.9.1)
-    rb_sys (0.9.110)
-      rake-compiler-dock (= 1.9.1)
+    rb_sys (0.9.105)
     rexml (3.4.0)
     rspec (3.13.0)
       rspec-core (~> 3.13.0)
@@ -38,7 +36,7 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  pf2 (= 0.6.0)
+  pf2 (= 0.8.0)
   rake (~> 13.0)
   rake-compiler (~> 1.2)
   rexml

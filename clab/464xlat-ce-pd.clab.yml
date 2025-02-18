@@ -39,6 +39,7 @@ topology:
       exec:
         - &remove_default_rt sh -c 'ip -4 route del default && ip -6 route del default'
         - &enable_forwarding sysctl -w net.ipv4.conf.all.forwarding=1 net.ipv6.conf.all.forwarding=1
+        - &wait_xlat sh -c 'for i in $(seq 10); do if ip link show tun-xlat; then break; else sleep 1; fi; done'
 
         # Direct IPv4 traffic to Xlat
         - ip link set dev tun-xlat up
@@ -74,9 +75,13 @@ topology:
       kind: linux
       image: *image
       cmd: tun-xlat 2001:db8:66:d1e0::/96 64:ff9b::/96
+      env:
+        XLAT_PROFILE: 'on'
+#        XLAT_NOJIT: 'on'
       exec:
         - *remove_default_rt
         - *enable_forwarding
+        - *wait_xlat
 
         # rt1
         - ip addr add fe80::64/64 dev eth1

@@ -34,13 +34,13 @@ else
 end
 
 Signal.trap(:USR1) do
-  break unless $profiling
-
-  profile = Pf2.stop
-  begin
-    File.write("/tmp/xlat-#$$.pf2profile", profile)
-  ensure
-    Pf2.start
+  if $profiling
+    profile = Pf2.stop
+    begin
+      File.write("/tmp/xlat-#$$.pf2profile", profile)
+    ensure
+      Pf2.start
+    end
   end
 end
 

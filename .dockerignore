@@ -1,2 +1,7 @@
+.git/
 .bundle/
 vendor/
+clab/
+tmp/
+
+Dockerfile
