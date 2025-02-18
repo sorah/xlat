@@ -1,6 +1,6 @@
 use std::{
     fs::File,
-    io::{IoSlice, IoSliceMut, Read, Write},
+    io::{ErrorKind, IoSlice, IoSliceMut, Read, Write},
     mem::ManuallyDrop,
     os::fd::{AsRawFd as _, FromRawFd as _, RawFd},
 };
@@ -35,8 +35,16 @@ fn writev(ruby: &Ruby, io: RFile, bufs: RArray) -> Result<usize, Error> {
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    gvl::call_without_gvl2(|| w.write_vectored(&vec))
-        .map_err(|e| Error::new(ruby.exception_io_error(), e.to_string()))
+    loop {
+        match gvl::call_without_gvl2(|| w.write_vectored(&vec)) {
+            Ok(n) => return Ok(n),
+            Err(err) => {
+                if err.kind() != ErrorKind::Interrupted {
+                    return Err(Error::new(ruby.exception_io_error(), err.to_string()));
+                }
+            }
+        }
+    }
 }
 
 /// readv(IO, Array[IO::Buffer]) -> Integer
@@ -51,8 +59,16 @@ fn readv(ruby: &Ruby, io: RFile, bufs: RArray) -> Result<usize, Error> {
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    gvl::call_without_gvl2(|| r.read_vectored(&mut vec))
-        .map_err(|e| Error::new(ruby.exception_io_error(), e.to_string()))
+    loop {
+        match gvl::call_without_gvl2(|| r.read_vectored(&mut vec)) {
+            Ok(n) => return Ok(n),
+            Err(err) => {
+                if err.kind() != ErrorKind::Interrupted {
+                    return Err(Error::new(ruby.exception_io_error(), err.to_string()));
+                }
+            }
+        }
+    }
 }
 
 #[magnus::init]
