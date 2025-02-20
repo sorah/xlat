@@ -59,6 +59,21 @@ RSpec.describe Xlat::Protocols::Ip do
       end
     end
 
+    it 'parses IPv4 with IP options' do
+      ip = subject.parse(bytes: TestPackets::TEST_PACKET_IPV4_OPTS_UDP)
+      aggregate_failures do
+        expect(ip).to be_kind_of Xlat::Protocols::Ip
+        expect(ip.version).to eq Xlat::Protocols::Ip::Ipv4
+        expect(ip.proto).to eq 17
+        expect(ip.l4_start).to eq 24
+        expect(ip.l4_length).to eq 9
+        expect(ip.l4).to be_kind_of Xlat::Protocols::Udp
+        expect(ip.l4_bytes).to be ip.bytes
+        expect(ip.l4_bytes_offset).to eq 24
+        expect(ip.l4_bytes_length).to eq 9
+      end
+    end
+
     it 'parses IPv4 ICMP Echo' do
       ip = subject.parse(bytes: TestPackets::TEST_PACKET_IPV4_ICMP_ECHO)
       aggregate_failures do

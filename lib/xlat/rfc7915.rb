@@ -65,8 +65,7 @@ module Xlat
       # FIXME: ToS ignored
 
       # Total Length = copy from IPv6; may be updated in later step
-      ipv6_length = ipv6_bytes.get_value(:U16, ipv6_bytes_offset + 4)
-      ipv4_length = ipv6_length + 20
+      ipv4_length = ipv6_packet.l4_length + 20
       # not considering as a checksum delta because upper layer packet length doesn't take this into account; cs_delta += ipv6_length - ipv4_length
       new_header_buffer.set_value(:U16, 2, ipv4_length)
 
@@ -85,6 +84,7 @@ module Xlat
       cs_delta += cs_delta_a + cs_delta_b
 
       # TODO: DF bit
+      # TODO: discard if expired source route option is present
 
       if !icmp_payload && ipv6_packet.proto == 58 # icmpv6
         icmp_result, icmp_output = translate_icmpv6_to_icmpv4(ipv6_packet, new_header_buffer, max_length - 20)
@@ -144,9 +144,8 @@ module Xlat
 
       # Flow label = 0
 
-      # Total Length = copy from IPv4; may be updated in later step
-      ipv4_length = ipv4_bytes.get_value(:U16, ipv4_bytes_offset + 2)
-      ipv6_length = ipv4_length - 20
+      # IPv6 Length = IPv4 total length - IPv4 header length; may be updated in later step
+      ipv6_length = ipv4_packet.l4_length
       # not considering as a checksum delta because upper layer packet length doesn't take this into account; cs_delta += ipv4_length - ipv6_length
       new_header_buffer.set_value(:U16, 4, ipv6_length)
 

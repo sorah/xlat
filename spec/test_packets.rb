@@ -27,6 +27,29 @@ module TestPackets
     %w(af),
   ]
 
+  TEST_PACKET_IPV4_OPTS_UDP = buffer [
+    # ipv4
+    %w(46 00), # header len (24)
+    %w(00 21), # total length (24+8+1=33)
+    %w(c3 98), # identification
+    %w(00 00), # flags
+    %w(40), # ttl
+    %w(11), # protocol
+    %w(e7 6c), # checksum
+    %w(c0 00 02 07), # src
+    %w(c0 00 02 08), # dst
+    %w(1e 04 2c b3), # opt: experimental
+
+    # udp
+    %w(c1 5b), # src port
+    %w(00 35), # dst port
+    %w(00 09), # length
+    %w(0b 3b), # checksum
+
+    # payload
+    %w(af),
+  ]
+
   TEST_PACKET_IPV6_UDP = buffer [
     # ipv6
     %w(60 00 00 00), # version, qos, flow label

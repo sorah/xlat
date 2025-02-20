@@ -66,7 +66,7 @@ module Xlat
           end
         end
 
-        def self.parse(packet)
+        def self.parse(packet, _b0)
           bytes = packet.bytes
           offset = packet.bytes_offset
 
