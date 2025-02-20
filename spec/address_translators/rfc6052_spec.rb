@@ -75,4 +75,11 @@ RSpec.describe Xlat::AddressTranslators::Rfc6052 do
       expect { translator }.to raise_error(ArgumentError)
     end
   end
+
+  context "with non-zero reserved bits" do
+    let(:pref64n_string) { '2001:db8:0:0:1000::/96' }
+    specify do
+      expect { translator }.to raise_error(ArgumentError)
+    end
+  end
 end

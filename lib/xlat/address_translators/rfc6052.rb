@@ -14,8 +14,14 @@ module Xlat
 
       def initialize(pref64n_string)
         @pref64n = IPAddr.new(pref64n_string, Socket::AF_INET6)
-        raise ArgumentError, "#{self.class.name} only supports Pref64n::/96" unless @pref64n.prefix == 96
+        unless @pref64n.prefix == 96
+          raise ArgumentError, "#{self.class.name} only supports Pref64::/96"
+        end
+
         @pref64n_prefix = IO::Buffer.for(@pref64n.hton).slice(0, 12)
+        unless @pref64n_prefix.get_value(:U8, 8) == 0
+          raise ArgumentError, "Bits 64-71 in Pref64::/96 must be all zeroes"
+        end
 
         @cs_delta = Xlat::Common.sum16be(@pref64n_prefix)
         @cs_delta = 0 if @cs_delta % 0xffff == 0 # checksum neutrality
