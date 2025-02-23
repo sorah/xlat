@@ -48,7 +48,7 @@ module Xlat
     end
 
     # Returns array of bytestrings to send as a IPv4 packet. May update original packet content.
-    def translate_to_ipv4(ipv6_packet)
+    def translate_to_ipv4(ipv6_packet, max_length)
       raise BufferInUse if @new_header_buffer_in_use
       raise ArgumentError unless ipv6_packet.version.to_i == 6
       icmp_payload = @inner_icmp.nil?
@@ -87,9 +87,19 @@ module Xlat
       # TODO: DF bit
 
       if !icmp_payload && ipv6_packet.proto == 58 # icmpv6
-        icmp_result, icmp_output = translate_icmpv6_to_icmpv4(ipv6_packet, new_header_buffer)
+        icmp_result, icmp_output = translate_icmpv6_to_icmpv4(ipv6_packet, new_header_buffer, max_length - 20)
         return return_buffer_ownership() unless icmp_result
         cs_delta += icmp_result
+      else
+        l4_length = ipv6_packet.l4_bytes_length
+        unless 20 + l4_length <= max_length
+          if icmp_payload
+            l4_length = max_length - 20
+          else
+            # FIXME: this should not happen
+            return return_buffer_ownership()
+          end
+        end
       end
 
       #p ipv6_bytes.chars.map { _1.ord.to_s(16).rjust(2,'0') }.join(' ')
@@ -111,13 +121,13 @@ module Xlat
       if icmp_output
         @output.concat(icmp_output)
       else
-        @output << ipv4_packet.l4_bytes.slice(ipv4_packet.l4_bytes_offset, ipv4_packet.l4_bytes_length)
+        @output << ipv4_packet.l4_bytes.slice(ipv4_packet.l4_bytes_offset, l4_length)
       end
       @output
     end
 
     # Returns array of bytestrings to send as a IPv6 packet. May update original packet content.
-    def translate_to_ipv6(ipv4_packet)
+    def translate_to_ipv6(ipv4_packet, max_length)
       raise BufferInUse if @new_header_buffer_in_use
       raise ArgumentError unless ipv4_packet.version.to_i == 4
       icmp_payload = @inner_icmp.nil?
@@ -152,13 +162,22 @@ module Xlat
       cs_delta += cs_delta_a + cs_delta_b
 
       if !icmp_payload && ipv4_packet.proto == 1 # icmpv4
-        icmp_result, icmp_output = translate_icmpv4_to_icmpv6(ipv4_packet, new_header_buffer)
+        icmp_result, icmp_output = translate_icmpv4_to_icmpv6(ipv4_packet, new_header_buffer, max_length - 40)
         return return_buffer_ownership() unless icmp_result
         cs_delta += icmp_result
+      else
+        l4_length = ipv4_packet.l4_bytes_length
+        unless 40 + l4_length <= max_length
+          if icmp_payload
+            l4_length = max_length - 40
+          else
+            # FIXME: generate "fragmentation needed" if DF=1
+            return return_buffer_ownership()
+          end
+        end
       end
 
       # TODO: generate udp checksum option (section 4.5.)
-      # TODO: ICMPv4 => ICMPv6
       ipv6_packet = ipv4_packet.convert_version!(Protocols::Ip::Ipv6, new_header_buffer, cs_delta)
       ipv6_packet.apply_changes
 
@@ -168,7 +187,7 @@ module Xlat
       if icmp_output
         @output.concat(icmp_output)
       else
-        @output << ipv6_packet.l4_bytes.slice(ipv6_packet.l4_bytes_offset, ipv6_packet.l4_bytes_length)
+        @output << ipv6_packet.l4_bytes.slice(ipv6_packet.l4_bytes_offset, l4_length)
       end
       @output
     end
@@ -278,7 +297,7 @@ module Xlat
       16..19 => 24,
     }]
 
-    private def translate_icmpv6_to_icmpv4(ipv6_packet, new_header_buffer)
+    private def translate_icmpv6_to_icmpv4(ipv6_packet, new_header_buffer, max_length)
       raise unless @inner_icmp
       icmpv6 = ipv6_packet.l4
       return unless icmpv6
@@ -335,20 +354,50 @@ module Xlat
       end
 
       if translate_payload
-        payload = @inner_packet.parse(bytes: icmpv6.payload_bytes, bytes_offset: icmpv6.payload_bytes_offset, bytes_length: icmpv6.payload_bytes_length)
-        payload_translated = payload && @inner_icmp.translate_to_ipv4(payload)
-        if payload_translated
-          output = [
-            l4_bytes.slice(l4_bytes_offset, 8),
-            payload_translated[0],
-            payload_translated[1].slice(0,[payload_translated[1].size,500].min) # FIXME: more appropriate length limit
-          ]
+        payload_bytes = icmpv6.payload_bytes
+        payload_bytes_offset = icmpv6.payload_bytes_offset
+        payload_bytes_length = icmpv6.payload_bytes_length
 
-          l4_length_changed = output.map(&:size).sum
-          if translate_payload == :error_payload_rfc4884 && l4_bytes.get_value(:U8, l4_bytes_offset+4) > 0
-            l4_bytes.set_value(:U8, l4_bytes_offset+4, 0)
-            l4_bytes.set_value(:U8, l4_bytes_offset+5, l4_length_changed-8)
+        if translate_payload == :error_payload_rfc4884
+          original_datagram_length = l4_bytes.get_value(:U8, l4_bytes_offset+4) * 8
+          return unless original_datagram_length < payload_bytes_length
+          rfc4884 = original_datagram_length > 0
+        end
+
+        original_datagram = @inner_packet.parse(
+          bytes: payload_bytes,
+          bytes_offset: payload_bytes_offset,
+          bytes_length: rfc4884 ? original_datagram_length : payload_bytes_length,
+        )
+
+        max_length -= 8  # ICMPv4 header
+        original_datagram_translated = original_datagram && @inner_icmp.translate_to_ipv4(original_datagram, [max_length, 512].min)
+        if original_datagram_translated
+          output = [l4_bytes.slice(l4_bytes_offset, 8), *original_datagram_translated]
+
+          if rfc4884
+            translated_length = original_datagram_translated.sum(&:size)
+
+            if translated_length < 128
+              # RFC 4884: the "original datagram" field MUST contain at least 128 octets.
+              padding_length = 128 - translated_length
+              new_original_datagram_length = 128
+            else
+              # RFC 4884: the "original datagram" field MUST be zero padded to the nearest 32-bit boundary.
+              new_original_datagram_length = 4 * translated_length.ceildiv(4)
+              padding_length = new_original_datagram_length - translated_length
+            end
+            output << IO::Buffer.new(padding_length) if padding_length > 0
+
+            max_length -= new_original_datagram_length
+            extension = payload_bytes.slice(payload_bytes_offset + original_datagram_length, [payload_bytes_length - original_datagram_length, max_length].min)
+            output << extension
+
+            l4_bytes.set_value(:U8, l4_bytes_offset + 4, 0)  # Reserved
+            l4_bytes.set_value(:U8, l4_bytes_offset + 5, new_original_datagram_length / 4)
           end
+
+          l4_length_changed = output.sum(&:size)
         end
 
         # Force recalculation of ICMP checksum
@@ -384,7 +433,7 @@ module Xlat
       [outer_cs_delta, output]
     end
 
-    private def translate_icmpv4_to_icmpv6(ipv4_packet, new_header_buffer)
+    private def translate_icmpv4_to_icmpv6(ipv4_packet, new_header_buffer, max_length)
       raise unless @inner_icmp
       icmpv4 = ipv4_packet.l4
       return unless icmpv4
@@ -449,21 +498,44 @@ module Xlat
       end
 
       if translate_payload
-        payload = @inner_packet.parse(bytes: icmpv4.payload_bytes, bytes_offset: icmpv4.payload_bytes_offset, bytes_length: icmpv4.payload_bytes_length)
-        # TODO: protocol version verification
-        payload_translated = payload && @inner_icmp.translate_to_ipv6(payload)
-        if payload_translated
-          output = [
-            l4_bytes.slice(l4_bytes_offset, 8),
-            payload_translated[0],
-            payload_translated[1].slice(0,[payload_translated[1].size,500].min) # FIXME: more appropriate length limit
-          ]
+        payload_bytes = icmpv4.payload_bytes
+        payload_bytes_offset = icmpv4.payload_bytes_offset
+        payload_bytes_length = icmpv4.payload_bytes_length
 
-          l4_length_changed = output.map(&:size).sum
-          if translate_payload == :error_payload_rfc4884 && l4_bytes.get_value(:U8, l4_bytes_offset+5) > 0
-            l4_bytes.set_value(:U8, l4_bytes_offset+4, l4_length_changed-8)
-            l4_bytes.set_value(:U8, l4_bytes_offset+5, 0)
+        if translate_payload == :error_payload_rfc4884
+          original_datagram_length = l4_bytes.get_value(:U8, l4_bytes_offset+5) * 4
+          return unless original_datagram_length < payload_bytes_length
+          rfc4884 = original_datagram_length > 0
+        end
+
+        original_datagram = @inner_packet.parse(
+          bytes: payload_bytes,
+          bytes_offset: payload_bytes_offset,
+          bytes_length: rfc4884 ? original_datagram_length : payload_bytes_length,
+        )
+
+        max_length -= 8  # ICMPv6 header
+        original_datagram_translated = original_datagram && @inner_icmp.translate_to_ipv6(original_datagram, [max_length, 1200].min)
+        if original_datagram_translated
+          output = [l4_bytes.slice(l4_bytes_offset, 8), *original_datagram_translated]
+
+          if rfc4884
+            translated_length = original_datagram_translated.sum(&:size)
+
+            # RFC 4884: the "original datagram" field MUST be zero padded to the nearest 64-bit boundary.
+            new_original_datagram_length = 8 * translated_length.ceildiv(8)
+            padding_length = new_original_datagram_length - translated_length
+            output << IO::Buffer.new(padding_length) if padding_length > 0
+
+            max_length -= new_original_datagram_length
+            extension = payload_bytes.slice(payload_bytes_offset + original_datagram_length, [payload_bytes_length - original_datagram_length, max_length].min)
+            output << extension
+
+            l4_bytes.set_value(:U8, l4_bytes_offset + 4, new_original_datagram_length / 8)
+            l4_bytes.set_value(:U8, l4_bytes_offset + 5, 0)  # Reserved
           end
+
+          l4_length_changed = output.sum(&:size)
         end
 
         # Force recalculation of ICMP checksum
