@@ -9,7 +9,8 @@ module Xlat
     end
 
     def run
-      buf = IO::Buffer.new(@adapter.mtu)
+      mtu = @adapter.mtu
+      buf = IO::Buffer.new(mtu)
       parser = Protocols::Ip.new
 
       loop do
@@ -23,9 +24,9 @@ module Xlat
 
         case
         when pkt.version == Protocols::Ip::Ipv4
-          output = @translator.translate_to_ipv6(pkt)
+          output = @translator.translate_to_ipv6(pkt, mtu)
         when pkt.version == Protocols::Ip::Ipv6
-          output = @translator.translate_to_ipv4(pkt)
+          output = @translator.translate_to_ipv4(pkt, mtu)
         else
           fail 'unknown IP version'
         end

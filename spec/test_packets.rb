@@ -469,6 +469,103 @@ module TestPackets
     %w(af),
   ]
 
+  TEST_PACKET_IPV4_ICMP_ADMIN_RFC4884 = buffer [
+    # ipv4
+    %w(45 00),
+    %w(00 a8), # total length (20+8+20+8+100+4+8=168)
+    %w(c3 98), # identification
+    %w(00 00), # flags
+    %w(40), # ttl
+    %w(01), # protocol
+    %w(32 ad), # checksum
+    %w(c0 00 02 07), # src
+    %w(c0 00 02 08), # dst
+
+    # icmp
+    %w(03 0a), # type=3,code=10 (unreachable admin prohibited)
+    %w(80 f6), # checksum
+    %w(00), # unused
+    %w(20), # original datagram length (measured in 32 bits)
+    %w(00 00), # unused
+
+    # payload ipv4
+    %w(45 00),
+    %w(00 1d), # total length (20+8+1=29)
+    %w(c3 98), # identification
+    %w(00 00), # flags
+    %w(40), # ttl
+    %w(11), # protocol
+    %w(33 32), # checksum
+    %w(c0 00 02 02), # src
+    %w(c0 00 02 03), # dst
+
+    # payload udp
+    %w(c1 5b), # src port
+    %w(00 35), # dst port
+    %w(00 09), # length
+    %w(0b 45), # checksum
+
+    # payload
+    %w(af),
+
+    # padding to 128 bytes
+    %w(00) * (128-20-8-1),
+
+    # icmp extension header
+    %w(20 00), # version
+    %w(78 2f), # checksum
+
+    # icmp extension object (private use)
+    %w(00 08), # length
+    %w(ff 1b), # class / sub-type
+    %w(12 34 56 78), # payload
+  ]
+
+  TEST_PACKET_IPV6_ICMP_ADMIN_RFC4884 = buffer [
+    # ipv6
+    %w(60 00 00 00), # version, qos, flow label
+    %w(00 4c), # payload length (8+40+8+8+4+8=76)
+    %w(3a), # next header
+    %w(40), # hop limit
+    %w(20 01 0d b8 00 60 00 00 00 00 00 00 c0 00 02 07), # src
+    %w(20 01 0d b8 00 64 00 00 00 00 00 00 c0 00 02 08), # dst
+
+    # icmp
+    %w(01 01), # type=1,code=1 (unreachable admin prohibited)
+    %w(a6 02), # checksum
+    %w(07), # original datagram length (measured in 64 bits)
+    %w(00 00 00), # unused
+
+    # ipv6
+    %w(60 00 00 00), # version, qos, flow label
+    %w(00 09), # payload length (8+1=9)
+    %w(11), # next header
+    %w(40), # hop limit
+    %w(00 64 ff 9b 00 01 ff fe 00 00 00 00 c0 00 02 02), # src
+    %w(00 64 ff 9b 00 00 00 00 00 00 00 00 c0 00 02 03), # dst
+
+    # udp
+    %w(c1 5b), # src port
+    %w(00 35), # dst port
+    %w(00 09), # length
+    %w(0b 45), # checksum
+
+    # payload
+    %w(af),
+
+    # padding to 64bit boundary
+    %w(00) * 7,
+
+    # icmp extension header
+    %w(20 00), # version
+    %w(78 2f), # checksum
+
+    # icmp extension object (private use)
+    %w(00 08), # length
+    %w(ff 1b), # class / sub-type
+    %w(12 34 56 78), # payload
+   ]
+
   TEST_PACKET_IPV6_ETHERIP = buffer [
     # ipv6
     %w(60 00 00 00), # version, qos, flow label
