@@ -61,19 +61,21 @@ module Xlat
           end
         end
 
-        def self.parse(packet)
+        def self.parse(packet, b0)
           bytes = packet.bytes
           offset = packet.bytes_offset
 
-          return false if bytes.get_value(:U8, offset) != 0x45  # TODO: handle IPv4 options
+          header_length = (b0 & 0x0f) * 4
+          return false if header_length < 20
+
           # tos?
 
           total_length = bytes.get_value(:U16, offset + 2)
-          return false if total_length < 20
-          return false unless packet.set_l4_region(20, total_length - 20)
+          return false if total_length < header_length
+          return false unless packet.set_l4_region(header_length, total_length - header_length)
 
           # ignore identification
-          return false if bytes.get_value(:U16, offset + 6) & 0xbfff != 0 # ignore fragments
+          return false if bytes.get_value(:U16, offset + 6) & 0xbfff != 0 # discard fragments
 
           proto = bytes.get_value(:U8, offset + 9)
           packet.proto = proto

@@ -31,6 +31,7 @@ module Xlat
       attr_accessor :bytes_length  # Length of L3 datagram within `bytes`
       attr_accessor :proto  # L4 protocol ID
       attr_accessor :l4_start  # L3 header length
+      attr_accessor :l4_length # Length of L4 packet, as specified in L3 header
       attr_accessor :l4
       attr_accessor :l4_bytes  # IO::Buffer containing L4 packet
       attr_accessor :l4_bytes_offset  # Offset where L4 header begins within `l4_bytes`
@@ -56,6 +57,7 @@ module Xlat
         @proto = nil
         @version = nil
         @l4_start = nil
+        @l4_length = nil
         @l4 = nil
         @l4_bytes = l4_bytes
         @l4_bytes_offset = l4_bytes_offset
@@ -65,7 +67,8 @@ module Xlat
         # mimimum size for IPv4
         return nil if bytes_length < 20
 
-        case bytes.get_value(:U8, bytes_offset) >> 4
+        b0 = bytes.get_value(:U8, bytes_offset)
+        case b0 >> 4
         when 4
           @version = Ipv4
         when 6
@@ -74,7 +77,7 @@ module Xlat
           return nil
         end
 
-        return nil unless @version.parse(self)
+        return nil unless @version.parse(self, b0)
 
         case @proto
         when Protocols::Udp::PROTOCOL_ID
@@ -93,6 +96,7 @@ module Xlat
       # @return [true, false] Whether the given range is valid
       def set_l4_region(start, length)
         @l4_start = start
+        @l4_length = length
 
         unless @l4_bytes
           @l4_bytes = @bytes

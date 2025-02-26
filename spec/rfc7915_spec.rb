@@ -113,7 +113,7 @@ RSpec.describe Xlat::Rfc7915 do
       bytes = TestPackets.const_get(test_packet_const_name)
       describe test_packet_const_name do
         let(:output) do
-          hdrlen = (version == 4 ? 20 : 40)
+          hdrlen = (version == 4 ? (bytes.get_value(:U8, 0) & 0x0f)*4 : 40)
           [
             bytes.slice(0, hdrlen),
             bytes.slice(hdrlen),
@@ -324,6 +324,14 @@ RSpec.describe Xlat::Rfc7915 do
 
       it "translates into ipv6" do
         expect_packet_equal(6, TestPackets::TEST_PACKET_IPV6_ETHERIP, output)
+      end
+    end
+
+    context "with IPv4 Options" do
+      let!(:output) { translator.translate_to_ipv6(Xlat::Protocols::Ip.parse(TestPackets::TEST_PACKET_IPV4_OPTS_UDP.dup), 1500) }
+
+      it "translates into ipv6" do
+        expect_packet_equal(6, TestPackets::TEST_PACKET_IPV6_UDP, output)
       end
     end
 
