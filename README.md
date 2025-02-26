@@ -31,7 +31,6 @@ TODO: Write usage instructions here
 
 ## Caveats
 
-- Packets with IPv6 extensions are silently discarded; Unsupported.
 - Expecting no difference in IPv4 and IPv6 MTU
 - Fragmented packets are silently discarded
 

@@ -69,6 +69,35 @@ module TestPackets
     %w(af),
   ]
 
+  TEST_PACKET_IPV6_HOPOPT_DSTOPT_UDP = buffer [
+    # ipv6
+    %w(60 00 00 00), # version, qos, flow label
+    %w(00 29), # payload length (8+16+16+1=41)
+    %w(00), # next header (hopopt)
+    %w(40), # hop limit
+    %w(20 01 0d b8 00 60 00 00 00 00 00 00 c0 00 02 07), # src
+    %w(20 01 0d b8 00 64 00 00 00 00 00 00 c0 00 02 08), # dst
+
+    # hopopt
+    %w(3c), # next header (ipv6-opts)
+    %w(01), # header extension length (=16)
+    %w(1e 0c 01 02 03 04 05 06 07 08 09 0a 0b 0c),
+
+    # ipv6-opts
+    %w(11), # next header (udp)
+    %w(01), # header extension length (=16)
+    %w(1e 0c 01 02 03 04 05 06 07 08 09 0a 0b 0c),
+
+    # udp
+    %w(c1 5b), # src port
+    %w(00 35), # dst port
+    %w(00 09), # length
+    %w(af 04), # checksum
+
+    # payload
+    %w(af),
+  ]
+
   TEST_PACKET_IPV4_TCP = buffer [
     # ipv4
     %w(45 00),

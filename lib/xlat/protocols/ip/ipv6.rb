@@ -33,8 +33,8 @@ module Xlat
         extend Xlat::Common
 
         # https://www.iana.org/assignments/ipv6-parameters/ipv6-parameters.xhtml#extension-header
-        # except ESP (50)
-        EXTENSIONS = Ractor.make_shareable([0, 43, 44, 51, 60, 135, 139, 140, 253, 254].to_h { |id| [id, true] })
+        # except Fragment (44), ESP (50), AH (51)
+        EXTENSIONS = Ractor.make_shareable([0, 43, 60, 135, 139, 140, 253, 254].to_h { |id| [id, true] })
 
         def self.to_i
           6
@@ -68,16 +68,46 @@ module Xlat
 
         def self.parse(packet, _b0)
           bytes = packet.bytes
+          bytes_length = packet.bytes_length
           offset = packet.bytes_offset
 
-          return false if packet.bytes_length < 40
+          return false if bytes_length < 40
 
-          return false unless packet.set_l4_region(40, bytes.get_value(:U16, offset + 4))
+          payload_length = bytes.get_value(:U16, offset + 4)
           proto = bytes.get_value(:U8, offset + 6)
 
-          # drop packets containing IPv6 extensions (RFC 7045 grudgingly acknowledges existence of such middleboxes)
-          return false if EXTENSIONS[proto]
+          # [draft-ietf-6man-eh-limits-19] Section 4 suggests IPv6 nodes
+          # to process at least 64 bytes long chain of EHs.
+          extensions_length_limit = [payload_length, 64].min
+          extensions_length = 0
 
+          while EXTENSIONS[proto]
+            extension_start = 40 + extensions_length
+            return false if extension_start + 8 > bytes_length  # EH is at least 8 byte long
+
+            proto = bytes.get_value(:U8, offset + extension_start)
+            length = bytes.get_value(:U8, offset + extension_start + 1) * 8 + 8
+
+            extensions_length += length
+            return false if extensions_length > extensions_length_limit
+
+            # TODO: Routing header
+          end
+
+          if proto == 51  # AH
+            # AH has a non-standard EH format. It doesn't work with NAT anyway.
+            return false
+          end
+
+          # We assume Fragment is at the last of EH chain.
+          if proto == 44  # Fragment
+            # TODO: handle fragmentation
+            return false
+          end
+
+          # ESP is handled as L4 protocol
+
+          return false unless packet.set_l4_region(40 + extensions_length, payload_length - extensions_length)
           packet.proto = proto
 
           true
