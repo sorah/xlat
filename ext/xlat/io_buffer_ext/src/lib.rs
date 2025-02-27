@@ -73,6 +73,9 @@ fn readv(ruby: &Ruby, io: RFile, bufs: RArray) -> Result<usize, Error> {
 
 #[magnus::init]
 fn init(ruby: &Ruby) -> Result<(), Error> {
+    // We don't share objects across Ractors
+    unsafe { rb_sys::rb_ext_ractor_safe(true) };
+
     let module = ruby.define_module("Xlat")?.define_module("IOBufferExt")?;
     module.define_singleton_method("readv", function!(readv, 2))?;
     module.define_singleton_method("writev", function!(writev, 2))?;
