@@ -34,7 +34,7 @@ module Xlat
 
         # https://www.iana.org/assignments/ipv6-parameters/ipv6-parameters.xhtml#extension-header
         # except ESP (50)
-        EXTENSIONS = [0, 43, 44, 51, 60, 135, 139, 140, 253, 254].map { |id| [id, true] }.to_h
+        EXTENSIONS = Ractor.make_shareable([0, 43, 44, 51, 60, 135, 139, 140, 253, 254].to_h { |id| [id, true] })
 
         def self.to_i
           6

@@ -6,11 +6,12 @@ module Xlat
     class LinuxTun
       DEV_TUN = -'/dev/net/tun'
       IFF_TUN = 0x0001
+      IFF_MULTI_QUEUE = 0x0100
       IFF_NO_PI = 0x1000
       TUNSETIFF = 0x400454ca
       SIOCSIFMTU = 0x8922
 
-      def initialize(ifname)
+      def initialize(ifname, multiqueue: false)
         unless ifname.bytesize < Socket::IFNAMSIZ  # maxlen including the terminating NUL
           raise ArgumentError, "Too long interface name: #{ifname}"
         end
@@ -18,7 +19,8 @@ module Xlat
         @ifname = ifname
         @mtu = 1500
         @io = File.open(DEV_TUN, 'r+:BINARY')
-        @io.ioctl(TUNSETIFF, [@ifname, IFF_TUN | IFF_NO_PI].pack("a#{Socket::IFNAMSIZ}s!"))
+        options = IFF_TUN | (multiqueue ? IFF_MULTI_QUEUE : 0) | IFF_NO_PI
+        @io.ioctl(TUNSETIFF, [@ifname, options].pack("a#{Socket::IFNAMSIZ}s!"))
       end
 
       attr_reader :mtu
