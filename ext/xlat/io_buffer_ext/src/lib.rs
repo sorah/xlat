@@ -5,7 +5,13 @@ use std::{
     os::fd::{AsRawFd as _, FromRawFd as _, RawFd},
 };
 
-use magnus::{function, prelude::*, Error, Object, RArray, RFile, Ruby};
+use io_buffer::IOBuffer;
+use magnus::{
+    function, method,
+    prelude::*,
+    scan_args::{scan_args, Args},
+    Error, Object, RArray, RFile, Ruby, Value,
+};
 
 mod gvl;
 mod io_buffer;
@@ -30,7 +36,7 @@ fn writev(ruby: &Ruby, io: RFile, bufs: RArray) -> Result<usize, Error> {
     let vec = bufs
         .into_iter()
         .map(|v| {
-            io_buffer::IOBuffer::try_convert(v)
+            IOBuffer::try_convert(v)
                 .map(|buf| IoSlice::new(unsafe { &*buf.get_bytes_for_reading() }))
         })
         .collect::<Result<Vec<_>, _>>()?;
@@ -54,7 +60,7 @@ fn readv(ruby: &Ruby, io: RFile, bufs: RArray) -> Result<usize, Error> {
     let mut vec = bufs
         .into_iter()
         .map(|v| {
-            io_buffer::IOBuffer::try_convert(v)
+            IOBuffer::try_convert(v)
                 .map(|buf| IoSliceMut::new(unsafe { &mut *buf.get_bytes_for_writing() }))
         })
         .collect::<Result<Vec<_>, _>>()?;
@@ -71,13 +77,56 @@ fn readv(ruby: &Ruby, io: RFile, bufs: RArray) -> Result<usize, Error> {
     }
 }
 
+fn compare(ruby: &Ruby, rself: IOBuffer, args: &[Value]) -> Result<i32, Error> {
+    let args: Args<(IOBuffer,), (Option<usize>, Option<usize>, Option<usize>), (), (), (), ()> =
+        scan_args(args)?;
+    let (other,) = args.required;
+    let (offset, length, other_offset) = args.optional;
+
+    let self_slice = unsafe { &*rself.get_bytes_for_reading() }
+        .get(offset.unwrap_or(0)..)
+        .ok_or_else(|| Error::new(ruby.exception_arg_error(), "offset is out of range"))?;
+
+    let other_slice = unsafe { &*other.get_bytes_for_reading() }
+        .get(other_offset.unwrap_or(0)..)
+        .ok_or_else(|| Error::new(ruby.exception_arg_error(), "other_offset is out of range"))?;
+
+    let (self_slice, other_slice) = match length {
+        Some(length) => {
+            let self_slice = self_slice
+                .get(..length)
+                .ok_or_else(|| Error::new(ruby.exception_arg_error(), "length is out of range"))?;
+            let other_slice = other_slice
+                .get(..length)
+                .ok_or_else(|| Error::new(ruby.exception_arg_error(), "length is out of range"))?;
+            (self_slice, other_slice)
+        }
+        None => {
+            if self_slice.len() != other_slice.len() {
+                return Err(Error::new(
+                    ruby.exception_arg_error(),
+                    "lengths of slices are not equal",
+                ));
+            };
+            (self_slice, other_slice)
+        }
+    };
+
+    assert!(self_slice.len() == other_slice.len());
+    Ok(self_slice.cmp(other_slice) as i32)
+}
+
 #[magnus::init]
 fn init(ruby: &Ruby) -> Result<(), Error> {
     // We don't share objects across Ractors
     unsafe { rb_sys::rb_ext_ractor_safe(true) };
 
-    let module = ruby.define_module("Xlat")?.define_module("IOBufferExt")?;
-    module.define_singleton_method("readv", function!(readv, 2))?;
-    module.define_singleton_method("writev", function!(writev, 2))?;
+    let m_ext = ruby.define_module("Xlat")?.define_module("IOBufferExt")?;
+    m_ext.define_singleton_method("readv", function!(readv, 2))?;
+    m_ext.define_singleton_method("writev", function!(writev, 2))?;
+
+    let m_compare = m_ext.define_module("Compare")?;
+    m_compare.define_method("compare", method!(compare, -1))?;
+
     Ok(())
 }
