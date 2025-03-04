@@ -28,16 +28,16 @@ module Xlat
         @negative_cs_delta = -@cs_delta
       end
 
-      def translate_address_to_ipv4(ipv6_address,buffer,offset = 0)
-        return unless (ipv6_address.slice(0, @pref64n_prefix.size) <=> @pref64n_prefix) == 0
-        buffer.copy(ipv6_address, offset, 4, 12)
+      def translate_address_to_ipv4(source, source_offset, destination, destination_offset)
+        return unless source.compare(@pref64n_prefix, source_offset, 4) == 0
+        destination.copy(source, destination_offset, 4, source_offset + 12)
 
         @negative_cs_delta
       end
 
-      def translate_address_to_ipv6(ipv4_address,buffer,offset = 0)
-        buffer.copy(@pref64n_prefix, offset, 12)
-        buffer.copy(ipv4_address, offset + 12, 4)
+      def translate_address_to_ipv6(source, source_offset, destination, destination_offset)
+        destination.copy(@pref64n_prefix, destination_offset, 12)
+        destination.copy(source, destination_offset + 12, 4, source_offset)
 
         @cs_delta
       end
