@@ -14,9 +14,6 @@ module Xlat
     class BufferInUse < StandardError; end
 
     MAX_FRAGMENT_ID = 0xffffffff
-    IPV4_NULL_BUFFER = ("\x00".b * 20).freeze
-    IPV6_NULL_BUFFER = ("\x00".b * 40).freeze
-    EMPTY = ''.b.freeze
 
     # @param source_address_translator [Xlat::AddressTranslation]
     # @param destination_address_translator [Xlat::AddressTranslation]
@@ -218,7 +215,7 @@ module Xlat
         end
         tary.freeze
       end
-      ary.freeze
+      Ractor.make_shareable(ary)
     end
 
     gen_pointer_map = ->(h) do
@@ -229,7 +226,7 @@ module Xlat
           ary[f] = to
         end
       end
-      ary.freeze
+      Ractor.make_shareable(ary)
     end
 
     ICMPV6V4_TYPE_MAP = gen_type_map[{
@@ -575,4 +572,3 @@ module Xlat
 
   end
 end
-  
