@@ -22,27 +22,25 @@ ifname, src_prefix, dst_prefix = *ARGV
 src_translator = Xlat::AddressTranslators::Rfc6052.new(src_prefix)
 dst_translator = Xlat::AddressTranslators::Rfc6052.new(dst_prefix)
 
-def do_work(ifname, src_translator, dst_translator, multiqueue)
-  File.open('/dev/stderr', 'a') do |stderr|
-    logger = Logger.new(stderr)
+def do_work(stderr, ifname, src_translator, dst_translator, multiqueue)
+  logger = Logger.new(stderr)
 
-    Xlat::Adapters::LinuxTun.open(ifname, multiqueue:) do |tun|
-      tun.mtu = 1500
+  Xlat::Adapters::LinuxTun.open(ifname, multiqueue:) do |tun|
+    tun.mtu = 1500
 
-      loop do
-        Xlat::Runner.new(
-          adapter: tun,
-          translator: Xlat::Rfc7915.new(
-            source_address_translator: src_translator,
-            destination_address_translator: dst_translator,
-          ),
-          logger:,
-        ).run
-      end
-
-    rescue
-      logger.error { $!.full_message }
+    loop do
+      Xlat::Runner.new(
+        adapter: tun,
+        translator: Xlat::Rfc7915.new(
+          source_address_translator: src_translator,
+          destination_address_translator: dst_translator,
+        ),
+        logger:,
+      ).run
     end
+
+  rescue
+    logger.error { $!.full_message }
   end
 end
 
@@ -82,13 +80,13 @@ if @multiqueue
   workers = []
   while true
     while workers.size < @multiqueue
-      workers << Ractor.new(ifname, src_translator, dst_translator, true, &method(:do_work))
+      workers << Ractor.new($stderr.dup, ifname, src_translator, dst_translator, true, &method(:do_work))
     end
     r, = Ractor.select(*workers)
     workers.delete(r)
   end
 else
   profile do
-    do_work(ifname, src_translator, dst_translator, false)
+    do_work($stderr, ifname, src_translator, dst_translator, false)
   end
 end
