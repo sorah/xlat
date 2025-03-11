@@ -37,10 +37,9 @@ def do_work(stderr, ifname, src_translator, dst_translator, multiqueue)
         ),
         logger:,
       ).run
+    rescue
+      logger.error { $!.full_message }
     end
-
-  rescue
-    logger.error { $!.full_message }
   end
 end
 
