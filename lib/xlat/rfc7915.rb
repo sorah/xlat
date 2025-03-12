@@ -365,36 +365,37 @@ module Xlat
           bytes_offset: payload_bytes_offset,
           bytes_length: rfc4884 ? original_datagram_length : payload_bytes_length,
         )
+        return unless original_datagram
 
         max_length -= 8  # ICMPv4 header
-        original_datagram_translated = original_datagram && @inner_icmp.translate_to_ipv4(original_datagram, [max_length, 512].min)
-        if original_datagram_translated
-          output = [l4_bytes.slice(l4_bytes_offset, 8), *original_datagram_translated]
+        original_datagram_translated = @inner_icmp.translate_to_ipv4(original_datagram, [max_length, 512].min)
+        return unless original_datagram_translated
 
-          if rfc4884
-            translated_length = original_datagram_translated.sum(&:size)
+        output = [l4_bytes.slice(l4_bytes_offset, 8), *original_datagram_translated]
 
-            if translated_length < 128
-              # RFC 4884: the "original datagram" field MUST contain at least 128 octets.
-              padding_length = 128 - translated_length
-              new_original_datagram_length = 128
-            else
-              # RFC 4884: the "original datagram" field MUST be zero padded to the nearest 32-bit boundary.
-              new_original_datagram_length = 4 * translated_length.ceildiv(4)
-              padding_length = new_original_datagram_length - translated_length
-            end
-            output << IO::Buffer.new(padding_length) if padding_length > 0
+        if rfc4884
+          translated_length = original_datagram_translated.sum(&:size)
 
-            max_length -= new_original_datagram_length
-            extension = payload_bytes.slice(payload_bytes_offset + original_datagram_length, [payload_bytes_length - original_datagram_length, max_length].min)
-            output << extension
-
-            l4_bytes.set_value(:U8, l4_bytes_offset + 4, 0)  # Reserved
-            l4_bytes.set_value(:U8, l4_bytes_offset + 5, new_original_datagram_length / 4)
+          if translated_length < 128
+            # RFC 4884: the "original datagram" field MUST contain at least 128 octets.
+            padding_length = 128 - translated_length
+            new_original_datagram_length = 128
+          else
+            # RFC 4884: the "original datagram" field MUST be zero padded to the nearest 32-bit boundary.
+            new_original_datagram_length = 4 * translated_length.ceildiv(4)
+            padding_length = new_original_datagram_length - translated_length
           end
+          output << IO::Buffer.new(padding_length) if padding_length > 0
 
-          l4_length_changed = output.sum(&:size)
+          max_length -= new_original_datagram_length
+          extension = payload_bytes.slice(payload_bytes_offset + original_datagram_length, [payload_bytes_length - original_datagram_length, max_length].min)
+          output << extension
+
+          l4_bytes.set_value(:U8, l4_bytes_offset + 4, 0)  # Reserved
+          l4_bytes.set_value(:U8, l4_bytes_offset + 5, new_original_datagram_length / 4)
         end
+
+        l4_length_changed = output.sum(&:size)
 
         # Force recalculation of ICMP checksum
         l4_bytes.set_value(:U16, l4_bytes_offset+2,0)
@@ -509,34 +510,35 @@ module Xlat
           bytes_offset: payload_bytes_offset,
           bytes_length: rfc4884 ? original_datagram_length : payload_bytes_length,
         )
+        return unless original_datagram
 
         max_length -= 8  # ICMPv6 header
         original_datagram_translated = original_datagram && @inner_icmp.translate_to_ipv6(original_datagram, [max_length, 1200].min)
-        if original_datagram_translated
-          output = [l4_bytes.slice(l4_bytes_offset, 8), *original_datagram_translated]
+        return unless original_datagram_translated
 
-          if rfc4884
-            translated_length = original_datagram_translated.sum(&:size)
+        output = [l4_bytes.slice(l4_bytes_offset, 8), *original_datagram_translated]
 
-            # RFC 4884: the "original datagram" field MUST be zero padded to the nearest 64-bit boundary.
-            new_original_datagram_length = 8 * translated_length.ceildiv(8)
-            padding_length = new_original_datagram_length - translated_length
-            output << IO::Buffer.new(padding_length) if padding_length > 0
+        if rfc4884
+          translated_length = original_datagram_translated.sum(&:size)
 
-            max_length -= new_original_datagram_length
-            extension = payload_bytes.slice(payload_bytes_offset + original_datagram_length, [payload_bytes_length - original_datagram_length, max_length].min)
-            output << extension
+          # RFC 4884: the "original datagram" field MUST be zero padded to the nearest 64-bit boundary.
+          new_original_datagram_length = 8 * translated_length.ceildiv(8)
+          padding_length = new_original_datagram_length - translated_length
+          output << IO::Buffer.new(padding_length) if padding_length > 0
 
-            l4_bytes.set_value(:U8, l4_bytes_offset + 4, new_original_datagram_length / 8)
-            l4_bytes.set_value(:U8, l4_bytes_offset + 5, 0)  # Reserved
-          end
+          max_length -= new_original_datagram_length
+          extension = payload_bytes.slice(payload_bytes_offset + original_datagram_length, [payload_bytes_length - original_datagram_length, max_length].min)
+          output << extension
 
-          l4_length_changed = output.sum(&:size)
+          l4_bytes.set_value(:U8, l4_bytes_offset + 4, new_original_datagram_length / 8)
+          l4_bytes.set_value(:U8, l4_bytes_offset + 5, 0)  # Reserved
         end
+
+        l4_length_changed = output.sum(&:size)
 
         # Force recalculation of ICMP checksum
         l4_bytes.set_value(:U16, l4_bytes_offset+2,0)
-        cksum = output ? Protocols::Ip.checksum_list(output) : Protocols::Ip.checksum(l4_bytes.slice(l4_bytes_offset))
+        cksum = Protocols::Ip.checksum_list(output)
         l4_bytes.set_value(:U16, l4_bytes_offset+2, cksum)
         cksum = Protocols::Ip.checksum_adjust(cksum, Common.sum16be(new_header_buffer.slice(8,32)) + l4_length_changed + 58) # pseudo header
         l4_bytes.set_value(:U16, l4_bytes_offset+2, cksum)
