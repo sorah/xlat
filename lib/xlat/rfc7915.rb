@@ -159,6 +159,7 @@ module Xlat
 
       if !icmp_payload && ipv4_packet.proto == 1 # icmpv4
         icmp_result, icmp_output = translate_icmpv4_to_icmpv6(ipv4_packet, new_header_buffer, max_length - 40)
+        warn "ICMPV4V6_XLATE/IPV4V6_XLATE: translate_to_icmpv4_to_icmpv6" if !icmp_result && @inner_icmp.nil?
         return return_buffer_ownership() unless icmp_result
         cs_delta += icmp_result
       else
@@ -168,6 +169,7 @@ module Xlat
             l4_length = max_length - 40
           else
             # FIXME: generate "fragmentation needed" if DF=1
+            warn "ICMPV4V6_XLATE/IPV4V6_XLATE: fragmentation_maybe_needed" if @inner_icmp.nil?
             return return_buffer_ownership()
           end
         end
@@ -532,13 +534,15 @@ module Xlat
           end
 
           l4_length_changed = output.sum(&:size)
+        else
+          warn "ICMPV4V6_XLATE_NONE: (#{original_datagram.nil?},#{original_datagram_translated.nil?}) #{payload_bytes.inspect}"
         end
 
         # Force recalculation of ICMP checksum
         l4_bytes.set_value(:U16, l4_bytes_offset+2,0)
         cksum = output ? Protocols::Ip.checksum_list(output) : Protocols::Ip.checksum(l4_bytes.slice(l4_bytes_offset))
         l4_bytes.set_value(:U16, l4_bytes_offset+2, cksum)
-        cksum = Protocols::Ip.checksum_adjust(cksum, Common.sum16be(new_header_buffer.slice(8,32)) + l4_length_changed + 58) # pseudo header
+        cksum = Protocols::Ip.checksum_adjust(cksum, Common.sum16be(new_header_buffer.slice(8,32)) + (l4_length_changed || 0) + 58) # pseudo header
         l4_bytes.set_value(:U16, l4_bytes_offset+2, cksum)
 
       else
