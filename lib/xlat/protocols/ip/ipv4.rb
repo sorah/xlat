@@ -66,16 +66,24 @@ module Xlat
           offset = packet.bytes_offset
 
           header_length = (b0 & 0x0f) * 4
+          warn "header_length<20" if header_length < 20
           return false if header_length < 20
 
           # tos?
 
           total_length = bytes.get_value(:U16, offset + 2)
+          warn "total_length<header_length" if total_length < header_length
           return false if total_length < header_length
-          return false unless packet.set_l4_region(header_length, total_length - header_length)
+          unless packet.set_l4_region(header_length, total_length - header_length)
+            warn "packet.set_l4_region(header_length, total_length - header_length)" 
+            return false
+          end
 
           # ignore identification
-          return false if bytes.get_value(:U16, offset + 6) & 0xbfff != 0 # discard fragments
+          if bytes.get_value(:U16, offset + 6) & 0xbfff != 0 # discard fragments
+            warn "bytes.get_value(:U16, offset + 6) & 0xbfff != 0 # discard fragments"
+            return false
+          end
 
           proto = bytes.get_value(:U8, offset + 9)
           packet.proto = proto
