@@ -33,8 +33,7 @@ module Xlat
       end
 
       def read(buf)
-        size = IOBufferExt.readv(@io, [buf])
-        buf.slice(0, size)
+        IOBufferExt.readv(@io, [buf])
       end
 
       def write(*bufs)
