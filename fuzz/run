@@ -1,0 +1,11 @@
+#!/usr/bin/bash
+
+if ! bundle exec ruby -e 'exit(RbConfig::CONFIG["CC"] =~ /\Aclang/ ? 0 : 1)'; then
+  echo "!! Ruby needs to be built with clang !!" >&2
+fi
+
+bundle install --with=fuzz
+
+export ASAN_OPTIONS="allocator_may_return_null=1:detect_leaks=0:use_sigaltstack=0"
+
+bundle exec env LD_PRELOAD="$(bundle exec ruby -r ruzzy -e 'puts Ruzzy::ASAN_PATH')" ruby fuzz/test_tracer.rb fuzz/corpus "$@"

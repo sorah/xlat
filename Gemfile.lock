@@ -30,6 +30,7 @@ GEM
       diff-lcs (>= 1.2.0, < 2.0)
       rspec-support (~> 3.13.0)
     rspec-support (3.13.2)
+    ruzzy (0.7.0)
     webrick (1.9.1)
 
 PLATFORMS
@@ -41,6 +42,7 @@ DEPENDENCIES
   rake-compiler (~> 1.2)
   rexml
   rspec (~> 3.0)
+  ruzzy
   xlat!
 
 BUNDLED WITH

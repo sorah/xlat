@@ -11,3 +11,7 @@ gem "rspec", "~> 3.0"
 gem "pf2", "0.8.0"
 
 gem "rexml"
+
+group :fuzz, optional: true do
+  gem 'ruzzy'
+end
