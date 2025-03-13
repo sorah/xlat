@@ -195,6 +195,14 @@ RSpec.describe Xlat::Rfc7915 do
       end
     end
 
+    context "with fragmented icmp payload" do
+      let!(:output) { translator.translate_to_ipv4(Xlat::Protocols::Ip.parse(TestPackets::TEST_PACKET_IPV6_ICMP_FRAG_PAYLOAD.dup), 1500) }
+
+      it "translates into ipv4" do
+        expect(output).to be_nil  # Though we don't support fragments yet, it should not raise
+      end
+    end
+
     context "with icmp mtu" do
       let!(:output) { translator.translate_to_ipv4(Xlat::Protocols::Ip.parse(TestPackets::TEST_PACKET_IPV6_ICMP_MTU.dup), 1500) }
 
@@ -289,6 +297,14 @@ RSpec.describe Xlat::Rfc7915 do
       it "translates into ipv6" do
         expect_packet_equal(6, TestPackets::TEST_PACKET_IPV6_ICMP_ADMIN_RFC4884, output)
         assert_l4_checksum(6)
+      end
+    end
+
+    context "with fragmented icmp payload" do
+      let!(:output) { translator.translate_to_ipv6(Xlat::Protocols::Ip.parse(TestPackets::TEST_PACKET_IPV4_ICMP_FRAG_PAYLOAD.dup), 1500) }
+
+      it "translates into ipv6" do
+        expect(output).to be_nil  # Though we don't support fragments yet, it should not raise
       end
     end
 

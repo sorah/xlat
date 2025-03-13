@@ -587,7 +587,85 @@ module TestPackets
     %w(00 08), # length
     %w(ff 1b), # class / sub-type
     %w(12 34 56 78), # payload
-   ]
+  ]
+
+  TEST_PACKET_IPV4_ICMP_FRAG_PAYLOAD = buffer [
+    # ipv4
+    %w(45 00),
+    %w(00 40), # total length (20+8+20+8+8=64)
+    %w(c3 98), # identification
+    %w(00 00), # flags
+    %w(40), # ttl
+    %w(01), # protocol
+    %w(33 15), # checksum
+    %w(c0 00 02 07), # src
+    %w(c0 00 02 08), # dst
+
+    # icmp
+    %w(03 0a), # type=3,code=10 (unreachable admin prohibited)
+    %w(3f e4), # checksum
+    %w(00 00 00 00), # unused
+
+    # payload ipv4
+    %w(45 00),
+    %w(00 24), # total length (20+8+8=36)
+    %w(c3 98), # identification
+    %w(20 00), # flags (more fragments)
+    %w(40), # ttl
+    %w(11), # protocol
+    %w(13 2b), # checksum
+    %w(c0 00 02 02), # src
+    %w(c0 00 02 03), # dst
+
+    # payload udp
+    %w(c1 5b), # src port
+    %w(00 35), # dst port
+    %w(00 18), # length
+    %w(3c aa), # checksum
+
+    # payload
+    %w(af af af af af af af af),
+    # the next fragment contains 8 octets
+  ]
+
+  TEST_PACKET_IPV6_ICMP_FRAG_PAYLOAD = buffer [
+    # ipv6
+    %w(60 00 00 00), # version, qos, flow label
+    %w(00 48), # payload length (8+40+8+8+8=72)
+    %w(3a), # next header
+    %w(40), # hop limit
+    %w(20 01 0d b8 00 60 00 00 00 00 00 00 c0 00 02 07), # src
+    %w(20 01 0d b8 00 64 00 00 00 00 00 00 c0 00 02 08), # dst
+
+    # icmp
+    %w(01 01), # type=1,code=1 (unreachable admin prohibited)
+    %w(7c 2b), # checksum
+    %w(00 00 00 00), # unused
+
+    # ipv6
+    %w(60 00 00 00), # version, qos, flow label
+    %w(00 18), # payload length (8+8+8=24)
+    %w(2c), # next header (ipv6-frag)
+    %w(40), # hop limit
+    %w(00 64 ff 9b 00 01 ff fe 00 00 00 00 c0 00 02 02), # src
+    %w(00 64 ff 9b 00 00 00 00 00 00 00 00 c0 00 02 03), # dst
+
+    # ipv6-frag
+    %w(11), # next header
+    %w(00), # reserved
+    %w(00 01), # offset, more fragments
+    %w(00 00 c3 98), # identification
+
+    # udp
+    %w(c1 5b), # src port
+    %w(00 35), # dst port
+    %w(00 18), # length
+    %w(3c aa), # checksum
+
+    # payload
+    %w(af af af af af af af af),
+    # the next fragment contains 8 octets
+  ]
 
   TEST_PACKET_IPV6_ETHERIP = buffer [
     # ipv6
