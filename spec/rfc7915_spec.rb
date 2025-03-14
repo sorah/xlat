@@ -72,25 +72,28 @@ RSpec.describe Xlat::Rfc7915 do
 
   def assert_l4_checksum(version, data = nil)
     data ||= output[1..-1].map(&:get_string).join
-    protocol = output[0].get_string[version == 4 ? 9 : 6]
+    protocol = output[0].get_string[version == 4 ? 9 : 6].ord
+
+    if version == 6
+      # skip extension headers
+      while [0, 43, 51, 60, 135, 139, 140, 253, 254].include?(protocol)
+        protocol = data[0].ord
+        data = data[(data[1].ord+1)*8..]
+      end
+    end
 
     pseudo_header_fields = [
       version == 4 ? output[0].get_string(12,4) : output[0].get_string(8,16), # l3 src addr
       version == 4 ? output[0].get_string(16,4) : output[0].get_string(24,16), # l3 dst addr
-      "\x00".b,
-      protocol, # l3 protocol field
-      [data.size].pack('n'), # l4 size
+      [0, protocol, data.size].pack('CCn'), # reserved, l4 protocol, l4 size
     ]
     case
-    when version == 4 && protocol == "\x01".b # ICMPv4 lack pseudo-header
+    when version == 4 && protocol == 1 # ICMPv4 lack pseudo-header
       pseudo_header_fields = []
     end
     pseudo_header = pseudo_header_fields.join.b
     raise unless pseudo_header.size%2==0
-    bytes = [
-      pseudo_header,
-      data || "".b,
-    ].join.b
+    bytes = pseudo_header + data
     assert_checksum(IO::Buffer.for(bytes))
   end
 
@@ -226,6 +229,14 @@ RSpec.describe Xlat::Rfc7915 do
 
       it "translates into ipv4" do
         expect_packet_equal(4, TestPackets::TEST_PACKET_IPV4_ETHERIP, output)
+      end
+    end
+
+    context "with extension header" do
+      let!(:output) { translator.translate_to_ipv4(Xlat::Protocols::Ip.parse(TestPackets::TEST_PACKET_IPV6_HOPOPT_DSTOPT_UDP.dup), 1500) }
+
+      it "translates into ipv4" do
+        expect_packet_equal(4, TestPackets::TEST_PACKET_IPV4_UDP, output)
       end
     end
 
