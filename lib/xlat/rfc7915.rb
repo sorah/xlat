@@ -365,7 +365,7 @@ module Xlat
           bytes_offset: payload_bytes_offset,
           bytes_length: rfc4884 ? original_datagram_length : payload_bytes_length,
         )
-        return unless original_datagram
+        return unless original_datagram && original_datagram.version.to_i == 6
 
         max_length -= 8  # ICMPv4 header
         original_datagram_translated = @inner_icmp.translate_to_ipv4(original_datagram, [max_length, 512].min)
@@ -510,7 +510,7 @@ module Xlat
           bytes_offset: payload_bytes_offset,
           bytes_length: rfc4884 ? original_datagram_length : payload_bytes_length,
         )
-        return unless original_datagram
+        return unless original_datagram && original_datagram.version.to_i == 4
 
         max_length -= 8  # ICMPv6 header
         original_datagram_translated = original_datagram && @inner_icmp.translate_to_ipv6(original_datagram, [max_length, 1200].min)
