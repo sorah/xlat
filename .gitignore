@@ -13,3 +13,7 @@
 
 *.so
 *.pcap
+
+# fuzz
+crash-*
+leak-*

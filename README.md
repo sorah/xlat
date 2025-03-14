@@ -76,6 +76,15 @@ docker cp clab-464xlat-ue-pd-plat:/tmp/xlat-1.pf2profile .
 pf2 report ./xlat-1.pf2profile -o ./xlat.json
 ```
 
+### Fuzzing
+
+Requires: CRuby built with clang compiler.
+
+`fuzz/run` performs fuzzing against the parsers and `Xlat::Rfc7915` translator.
+
+```shell
+./fuzz/run
+```
 
 ## Contributing
 
