@@ -32,7 +32,7 @@ module Xlat
       return_buffer_ownership
 
       unless for_icmp
-        @inner_icmp = self.class.new(source_address_translator:, destination_address_translator:, for_icmp: true)
+        @inner_icmp = self.class.new(source_address_translator: destination_address_translator, destination_address_translator: source_address_translator, for_icmp: true)
         @inner_packet = Protocols::Ip.new(icmp_payload: true)
       end
     end
