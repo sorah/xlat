@@ -657,6 +657,76 @@ module TestPackets
     # the next fragment contains 8 octets
   ]
 
+  TEST_PACKET_IPV4_ICMP_ICMP_PAYLOAD = buffer [
+    # ipv4
+    %w(45 00),
+    %w(00 39), # total length (20+8+20+8+1=57)
+    %w(c3 98), # identification
+    %w(00 00), # flags
+    %w(40), # ttl
+    %w(01), # protocol
+    %w(33 1c), # checksum
+    %w(c0 00 02 07), # src
+    %w(c0 00 02 08), # dst
+
+    # icmp
+    %w(0b 00), # type=11,code=0 (time exceeded)
+    %w(f4 ff), # checksum
+    %w(00 00 00 00), # unused
+
+    # ipv4
+    %w(45 00),
+    %w(00 1d), # total length (20+8+1=29)
+    %w(c3 98), # identification
+    %w(00 00), # flags
+    %w(40), # ttl
+    %w(01), # protocol
+    %w(33 38), # checksum
+    %w(c0 00 02 08), # src
+    %w(c0 00 02 07), # dst
+
+    # icmp
+    %w(08 00), # type=8,code=0 (echo request)
+    %w(8a fd), # checksum
+    %w(12 34), # identifier
+    %w(ab cd), # sequence number
+
+    # payload
+    %w(af),
+  ]
+
+  TEST_PACKET_IPV6_ICMP_ICMP_PAYLOAD = buffer [
+    # ipv6
+    %w(60 00 00 00), # version, qos, flow label
+    %w(00 39), # payload length (8+40+8+1=57)
+    %w(3a), # next header
+    %w(40), # hop limit
+    %w(20 01 0d b8 00 60 00 00 00 00 00 00 c0 00 02 07), # src
+    %w(20 01 0d b8 00 64 00 00 00 00 00 00 c0 00 02 08), # dst
+
+    # icmp
+    %w(03 00), # type=3,code=0 (time exceeded)
+    %w(82 3f), # checksum
+    %w(00 00 00 00), # unused
+
+    # ipv6
+    %w(60 00 00 00), # version, qos, flow label
+    %w(00 09), # payload length (9)
+    %w(3a), # next header
+    %w(40), # hop limit
+    %w(20 01 0d b8 00 64 00 00 00 00 00 00 c0 00 02 08), # src
+    %w(20 01 0d b8 00 60 00 00 00 00 00 00 c0 00 02 07), # dst
+
+    # icmp
+    %w(80 00), # type=128,code=0 (echo request)
+    %w(32 73), # checksum
+    %w(12 34), # identifier
+    %w(ab cd), # sequence number
+
+    # payload
+    %w(af),
+  ]
+
   TEST_PACKET_IPV6_ICMP_FRAG_PAYLOAD = buffer [
     # ipv6
     %w(60 00 00 00), # version, qos, flow label
