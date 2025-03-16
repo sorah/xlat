@@ -404,8 +404,7 @@ module Xlat
 
       else
         # For incremental checksum update, remove pseudo header from ICMP checksum
-        upper_layer_packet_length = l4_bytes.size - l4_bytes_offset
-        cs_delta -= sum16be(ipv6_packet.tuple) + upper_layer_packet_length + 58
+        cs_delta -= sum16be(ipv6_packet.tuple) + ipv6_packet.l4_length + 58
 
         checksum = l4_bytes.get_value(:U16, l4_bytes_offset+2)
         checksum = Protocols::Ip.checksum_adjust(checksum, cs_delta)
@@ -545,9 +544,8 @@ module Xlat
 
       else
         # For incremental checksum update, ADD pseudo header to ICMP checksum
-        upper_layer_packet_length = l4_bytes.size - l4_bytes_offset
         # [8,32] = src+dst addr
-        cs_delta += Common.sum16be(new_header_buffer.slice(8,32)) + upper_layer_packet_length + 58
+        cs_delta += Common.sum16be(new_header_buffer.slice(8,32)) + ipv4_packet.l4_length + 58
 
         checksum = l4_bytes.get_value(:U16, l4_bytes_offset+2)
         checksum = Protocols::Ip.checksum_adjust(checksum, cs_delta)
