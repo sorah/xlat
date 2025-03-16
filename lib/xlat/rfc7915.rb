@@ -83,11 +83,13 @@ module Xlat
       # TODO: DF bit
       # TODO: discard if expired source route option is present
 
-      if !icmp_payload && ipv6_packet.proto == 58 # icmpv6
+      if ipv6_packet.proto == 58 # icmpv6
         icmp_result, icmp_output = translate_icmpv6_to_icmpv4(ipv6_packet, new_header_buffer, max_length - 20)
         return return_buffer_ownership() unless icmp_result
         cs_delta += icmp_result
-      else
+      end
+
+      unless icmp_output
         l4_length = ipv6_packet.l4_bytes_length
         unless 20 + l4_length <= max_length
           if icmp_payload
@@ -157,11 +159,13 @@ module Xlat
       cs_delta_b = @source_address_translator.translate_address_to_ipv6(ipv4_bytes.slice(ipv4_bytes_offset + 16,4), new_header_buffer, 24) or return return_buffer_ownership()
       cs_delta += cs_delta_a + cs_delta_b
 
-      if !icmp_payload && ipv4_packet.proto == 1 # icmpv4
+      if ipv4_packet.proto == 1 # icmpv4
         icmp_result, icmp_output = translate_icmpv4_to_icmpv6(ipv4_packet, new_header_buffer, max_length - 40)
         return return_buffer_ownership() unless icmp_result
         cs_delta += icmp_result
-      else
+      end
+
+      unless icmp_output
         l4_length = ipv4_packet.l4_bytes_length
         unless 40 + l4_length <= max_length
           if icmp_payload
@@ -294,7 +298,6 @@ module Xlat
     }]
 
     private def translate_icmpv6_to_icmpv4(ipv6_packet, new_header_buffer, max_length)
-      raise unless @inner_icmp
       icmpv6 = ipv6_packet.l4
       return unless icmpv6
       outer_cs_delta = 0
@@ -350,6 +353,8 @@ module Xlat
       end
 
       if translate_payload
+        return unless @inner_icmp  # Do not translate payload in nested ICMP
+
         payload_bytes = icmpv6.payload_bytes
         payload_bytes_offset = icmpv6.payload_bytes_offset
         payload_bytes_length = icmpv6.payload_bytes_length
@@ -430,7 +435,6 @@ module Xlat
     end
 
     private def translate_icmpv4_to_icmpv6(ipv4_packet, new_header_buffer, max_length)
-      raise unless @inner_icmp
       icmpv4 = ipv4_packet.l4
       return unless icmpv4
       outer_cs_delta = 0
@@ -494,6 +498,8 @@ module Xlat
       end
 
       if translate_payload
+        return unless @inner_icmp  # Do not translate payload in nested ICMP
+
         payload_bytes = icmpv4.payload_bytes
         payload_bytes_offset = icmpv4.payload_bytes_offset
         payload_bytes_length = icmpv4.payload_bytes_length

@@ -61,9 +61,17 @@ RSpec.describe Xlat::Rfc7915 do
     end
   end
 
+  def parse_packet(buffer)
+    ip = Xlat::Protocols::Ip.new
+    new_buffer = IO::Buffer.new(1500)
+    new_buffer.copy(buffer)
+    ip.parse(bytes: new_buffer, bytes_length: buffer.size)
+    ip
+  end
+
   describe "#translate_to_ipv4" do
     context "with udp" do
-      let!(:output) { translator.translate_to_ipv4(Xlat::Protocols::Ip.parse(TestPackets::TEST_PACKET_IPV6_UDP.dup), 1500) }
+      let!(:output) { translator.translate_to_ipv4(parse_packet(TestPackets::TEST_PACKET_IPV6_UDP.dup), 1500) }
 
       it "translates into ipv4" do
         expect(output).to have_correct_checksum(version: 4).and match_packet(TestPackets::TEST_PACKET_IPV4_UDP)
@@ -71,7 +79,7 @@ RSpec.describe Xlat::Rfc7915 do
     end
 
     context "with tcp" do
-      let!(:output) { translator.translate_to_ipv4(Xlat::Protocols::Ip.parse(TestPackets::TEST_PACKET_IPV6_TCP.dup), 1500) }
+      let!(:output) { translator.translate_to_ipv4(parse_packet(TestPackets::TEST_PACKET_IPV6_TCP.dup), 1500) }
 
       it "translates into ipv4" do
         expect(output).to have_correct_checksum(version: 4).and match_packet(TestPackets::TEST_PACKET_IPV4_TCP)
@@ -79,7 +87,7 @@ RSpec.describe Xlat::Rfc7915 do
     end
 
     context "with icmp echo" do
-      let!(:output) { translator.translate_to_ipv4(Xlat::Protocols::Ip.parse(TestPackets::TEST_PACKET_IPV6_ICMP_ECHO.dup), 1500) }
+      let!(:output) { translator.translate_to_ipv4(parse_packet(TestPackets::TEST_PACKET_IPV6_ICMP_ECHO.dup), 1500) }
 
       it "translates into ipv4" do
         expect(output).to have_correct_checksum(version: 4).and match_packet(TestPackets::TEST_PACKET_IPV4_ICMP_ECHO)
@@ -87,7 +95,7 @@ RSpec.describe Xlat::Rfc7915 do
     end
 
     context "with icmp echo reply" do
-      let!(:output) { translator.translate_to_ipv4(Xlat::Protocols::Ip.parse(TestPackets::TEST_PACKET_IPV6_ICMP_ECHO_REPLY.dup), 1500) }
+      let!(:output) { translator.translate_to_ipv4(parse_packet(TestPackets::TEST_PACKET_IPV6_ICMP_ECHO_REPLY.dup), 1500) }
 
       it "translates into ipv4" do
         expect(output).to have_correct_checksum(version: 4).and match_packet(TestPackets::TEST_PACKET_IPV4_ICMP_ECHO_REPLY)
@@ -95,7 +103,7 @@ RSpec.describe Xlat::Rfc7915 do
     end
 
     context "with icmp payload" do
-      let!(:output) { translator.translate_to_ipv4(Xlat::Protocols::Ip.parse(TestPackets::TEST_PACKET_IPV6_ICMP_ADMIN.dup), 1500) }
+      let!(:output) { translator.translate_to_ipv4(parse_packet(TestPackets::TEST_PACKET_IPV6_ICMP_ADMIN.dup), 1500) }
 
       it "translates into ipv4" do
         expect(output).to have_correct_checksum(version: 4).and match_packet(TestPackets::TEST_PACKET_IPV4_ICMP_ADMIN)
@@ -103,7 +111,7 @@ RSpec.describe Xlat::Rfc7915 do
     end
 
     context "with icmp truncated payload" do
-      let!(:output) { translator.translate_to_ipv4(Xlat::Protocols::Ip.parse(TestPackets::TEST_PACKET_IPV6_ICMP_ADMIN_TRUNC.dup), 1500) }
+      let!(:output) { translator.translate_to_ipv4(parse_packet(TestPackets::TEST_PACKET_IPV6_ICMP_ADMIN_TRUNC.dup), 1500) }
 
       it "translates into ipv4" do
         expect(output).to have_correct_checksum(version: 4).and match_packet(TestPackets::TEST_PACKET_IPV4_ICMP_ADMIN_TRUNC)
@@ -111,7 +119,7 @@ RSpec.describe Xlat::Rfc7915 do
     end
 
     context "with icmp payload + RFC 4884" do
-      let!(:output) { translator.translate_to_ipv4(Xlat::Protocols::Ip.parse(TestPackets::TEST_PACKET_IPV6_ICMP_ADMIN_RFC4884.dup), 1500) }
+      let!(:output) { translator.translate_to_ipv4(parse_packet(TestPackets::TEST_PACKET_IPV6_ICMP_ADMIN_RFC4884.dup), 1500) }
 
       it "translates into ipv4" do
         expect(output).to have_correct_checksum(version: 4).and match_packet(TestPackets::TEST_PACKET_IPV4_ICMP_ADMIN_RFC4884)
@@ -119,7 +127,7 @@ RSpec.describe Xlat::Rfc7915 do
     end
 
     context "with fragmented icmp payload" do
-      let!(:output) { translator.translate_to_ipv4(Xlat::Protocols::Ip.parse(TestPackets::TEST_PACKET_IPV6_ICMP_FRAG_PAYLOAD.dup), 1500) }
+      let!(:output) { translator.translate_to_ipv4(parse_packet(TestPackets::TEST_PACKET_IPV6_ICMP_FRAG_PAYLOAD.dup), 1500) }
 
       it "translates into ipv4" do
         expect(output).to be_nil  # Though we don't support fragments yet, it should not raise
@@ -127,7 +135,7 @@ RSpec.describe Xlat::Rfc7915 do
     end
 
     context "with icmp mtu" do
-      let!(:output) { translator.translate_to_ipv4(Xlat::Protocols::Ip.parse(TestPackets::TEST_PACKET_IPV6_ICMP_MTU.dup), 1500) }
+      let!(:output) { translator.translate_to_ipv4(parse_packet(TestPackets::TEST_PACKET_IPV6_ICMP_MTU.dup), 1500) }
 
       it "translates into ipv4" do
         expect(output).to have_correct_checksum(version: 4).and match_packet(TestPackets::TEST_PACKET_IPV4_ICMP_MTU)
@@ -135,15 +143,23 @@ RSpec.describe Xlat::Rfc7915 do
     end
 
     context "with icmp err header field" do
-      let!(:output) { translator.translate_to_ipv4(Xlat::Protocols::Ip.parse(TestPackets::TEST_PACKET_IPV6_ICMP_POINTER.dup), 1500) }
+      let!(:output) { translator.translate_to_ipv4(parse_packet(TestPackets::TEST_PACKET_IPV6_ICMP_POINTER.dup), 1500) }
 
       it "translates into ipv4" do
         expect(output).to have_correct_checksum(version: 4).and match_packet(TestPackets::TEST_PACKET_IPV4_ICMP_POINTER)
       end
     end
 
+    context "with nested icmp" do
+      let!(:output) { translator.translate_to_ipv4(parse_packet(TestPackets::TEST_PACKET_IPV6_ICMP_ICMP_PAYLOAD.dup), 1500) }
+
+      it "translates into ipv4" do
+        expect(output).to have_correct_checksum(version: 4).and match_packet(TestPackets::TEST_PACKET_IPV4_ICMP_ICMP_PAYLOAD)
+      end
+    end
+
     context "with unknown protocol" do
-      let!(:output) { translator.translate_to_ipv4(Xlat::Protocols::Ip.parse(TestPackets::TEST_PACKET_IPV6_ETHERIP.dup), 1500) }
+      let!(:output) { translator.translate_to_ipv4(parse_packet(TestPackets::TEST_PACKET_IPV6_ETHERIP.dup), 1500) }
 
       it "translates into ipv4" do
         expect(output).to have_correct_checksum(version: 4, l4: false).and match_packet(TestPackets::TEST_PACKET_IPV4_ETHERIP)
@@ -151,7 +167,7 @@ RSpec.describe Xlat::Rfc7915 do
     end
 
     context "with extension header" do
-      let!(:output) { translator.translate_to_ipv4(Xlat::Protocols::Ip.parse(TestPackets::TEST_PACKET_IPV6_HOPOPT_DSTOPT_UDP.dup), 1500) }
+      let!(:output) { translator.translate_to_ipv4(parse_packet(TestPackets::TEST_PACKET_IPV6_HOPOPT_DSTOPT_UDP.dup), 1500) }
 
       it "translates into ipv4" do
         expect(output).to have_correct_checksum(version: 4).and match_packet(TestPackets::TEST_PACKET_IPV4_UDP)
@@ -159,7 +175,7 @@ RSpec.describe Xlat::Rfc7915 do
     end
 
     context "with ICMP6 incomplete header" do
-      let!(:output) {  translator.translate_to_ipv4(Xlat::Protocols::Ip.parse(TestPackets::TEST_PACKET_IPV6_ICMP_INCOMPLETE_HDR.dup), 1500) }
+      let!(:output) {  translator.translate_to_ipv4(parse_packet(TestPackets::TEST_PACKET_IPV6_ICMP_INCOMPLETE_HDR.dup), 1500) }
 
       it "is discarded without error" do
         expect(output).to be_nil
@@ -169,7 +185,7 @@ RSpec.describe Xlat::Rfc7915 do
 
   describe "#translate_to_ipv6" do
     context "with udp" do
-      let!(:output) { translator.translate_to_ipv6(Xlat::Protocols::Ip.parse(TestPackets::TEST_PACKET_IPV4_UDP.dup), 1500) }
+      let!(:output) { translator.translate_to_ipv6(parse_packet(TestPackets::TEST_PACKET_IPV4_UDP.dup), 1500) }
 
       it "translates into ipv6" do
         expect(output).to have_correct_checksum(version: 6).and match_packet(TestPackets::TEST_PACKET_IPV6_UDP)
@@ -177,7 +193,7 @@ RSpec.describe Xlat::Rfc7915 do
     end
 
     context "with tcp" do
-      let!(:output) { translator.translate_to_ipv6(Xlat::Protocols::Ip.parse(TestPackets::TEST_PACKET_IPV4_TCP.dup), 1500) }
+      let!(:output) { translator.translate_to_ipv6(parse_packet(TestPackets::TEST_PACKET_IPV4_TCP.dup), 1500) }
 
       it "translates into ipv6" do
         expect(output).to have_correct_checksum(version: 6).and match_packet(TestPackets::TEST_PACKET_IPV6_TCP)
@@ -185,7 +201,7 @@ RSpec.describe Xlat::Rfc7915 do
     end
 
     context "with icmp echo" do
-      let!(:output) { translator.translate_to_ipv6(Xlat::Protocols::Ip.parse(TestPackets::TEST_PACKET_IPV4_ICMP_ECHO.dup), 1500) }
+      let!(:output) { translator.translate_to_ipv6(parse_packet(TestPackets::TEST_PACKET_IPV4_ICMP_ECHO.dup), 1500) }
 
       it "translates into ipv6" do
         expect(output).to have_correct_checksum(version: 6).and match_packet(TestPackets::TEST_PACKET_IPV6_ICMP_ECHO)
@@ -193,7 +209,7 @@ RSpec.describe Xlat::Rfc7915 do
     end
 
     context "with icmp echo reply" do
-      let!(:output) { translator.translate_to_ipv6(Xlat::Protocols::Ip.parse(TestPackets::TEST_PACKET_IPV4_ICMP_ECHO_REPLY.dup), 1500) }
+      let!(:output) { translator.translate_to_ipv6(parse_packet(TestPackets::TEST_PACKET_IPV4_ICMP_ECHO_REPLY.dup), 1500) }
 
       it "translates into ipv6" do
         expect(output).to have_correct_checksum(version: 6).and match_packet(TestPackets::TEST_PACKET_IPV6_ICMP_ECHO_REPLY)
@@ -201,7 +217,7 @@ RSpec.describe Xlat::Rfc7915 do
     end
 
     context "with icmp payload" do
-      let!(:output) { translator.translate_to_ipv6(Xlat::Protocols::Ip.parse(TestPackets::TEST_PACKET_IPV4_ICMP_ADMIN.dup), 1500) }
+      let!(:output) { translator.translate_to_ipv6(parse_packet(TestPackets::TEST_PACKET_IPV4_ICMP_ADMIN.dup), 1500) }
 
       it "translates into ipv6" do
         expect(output).to have_correct_checksum(version: 6).and match_packet(TestPackets::TEST_PACKET_IPV6_ICMP_ADMIN)
@@ -209,7 +225,7 @@ RSpec.describe Xlat::Rfc7915 do
     end
 
     context "with truncated icmp payload" do
-      let!(:output) { translator.translate_to_ipv6(Xlat::Protocols::Ip.parse(TestPackets::TEST_PACKET_IPV4_ICMP_ADMIN_TRUNC.dup), 1500) }
+      let!(:output) { translator.translate_to_ipv6(parse_packet(TestPackets::TEST_PACKET_IPV4_ICMP_ADMIN_TRUNC.dup), 1500) }
 
       it "translates into ipv6" do
         expect(output).to have_correct_checksum(version: 6).and match_packet(TestPackets::TEST_PACKET_IPV6_ICMP_ADMIN_TRUNC)
@@ -217,7 +233,7 @@ RSpec.describe Xlat::Rfc7915 do
     end
 
     context "with icmp payload + RFC 4884" do
-      let!(:output) { translator.translate_to_ipv6(Xlat::Protocols::Ip.parse(TestPackets::TEST_PACKET_IPV4_ICMP_ADMIN_RFC4884.dup), 1500) }
+      let!(:output) { translator.translate_to_ipv6(parse_packet(TestPackets::TEST_PACKET_IPV4_ICMP_ADMIN_RFC4884.dup), 1500) }
 
       it "translates into ipv6" do
         expect(output).to have_correct_checksum(version: 6).and match_packet(TestPackets::TEST_PACKET_IPV6_ICMP_ADMIN_RFC4884)
@@ -225,7 +241,7 @@ RSpec.describe Xlat::Rfc7915 do
     end
 
     context "with fragmented icmp payload" do
-      let!(:output) { translator.translate_to_ipv6(Xlat::Protocols::Ip.parse(TestPackets::TEST_PACKET_IPV4_ICMP_FRAG_PAYLOAD.dup), 1500) }
+      let!(:output) { translator.translate_to_ipv6(parse_packet(TestPackets::TEST_PACKET_IPV4_ICMP_FRAG_PAYLOAD.dup), 1500) }
 
       it "translates into ipv6" do
         expect(output).to be_nil  # Though we don't support fragments yet, it should not raise
@@ -233,7 +249,7 @@ RSpec.describe Xlat::Rfc7915 do
     end
 
     context "with icmp mtu" do
-      let!(:output) { translator.translate_to_ipv6(Xlat::Protocols::Ip.parse(TestPackets::TEST_PACKET_IPV4_ICMP_MTU.dup), 1500) }
+      let!(:output) { translator.translate_to_ipv6(parse_packet(TestPackets::TEST_PACKET_IPV4_ICMP_MTU.dup), 1500) }
 
       it "translates into ipv6" do
         ipv6 = TestPackets::TEST_PACKET_IPV6_ICMP_MTU.dup
@@ -246,7 +262,7 @@ RSpec.describe Xlat::Rfc7915 do
     end
 
     context "with icmp err header field" do
-      let!(:output) { translator.translate_to_ipv6(Xlat::Protocols::Ip.parse(TestPackets::TEST_PACKET_IPV4_ICMP_POINTER.dup), 1500) }
+      let!(:output) { translator.translate_to_ipv6(parse_packet(TestPackets::TEST_PACKET_IPV4_ICMP_POINTER.dup), 1500) }
 
       it "translates into ipv6" do
         ipv6 = TestPackets::TEST_PACKET_IPV6_ICMP_POINTER.dup
@@ -257,8 +273,16 @@ RSpec.describe Xlat::Rfc7915 do
       end
     end
 
+    context "with nested icmp" do
+      let!(:output) { translator.translate_to_ipv6(parse_packet(TestPackets::TEST_PACKET_IPV4_ICMP_ICMP_PAYLOAD.dup), 1500) }
+
+      it "translates into ipv4" do
+        expect(output).to have_correct_checksum(version: 6).and match_packet(TestPackets::TEST_PACKET_IPV6_ICMP_ICMP_PAYLOAD)
+      end
+    end
+
     context "with unknown protocol" do
-      let!(:output) { translator.translate_to_ipv6(Xlat::Protocols::Ip.parse(TestPackets::TEST_PACKET_IPV4_ETHERIP.dup), 1500) }
+      let!(:output) { translator.translate_to_ipv6(parse_packet(TestPackets::TEST_PACKET_IPV4_ETHERIP.dup), 1500) }
 
       it "translates into ipv6" do
         expect(output).to have_correct_checksum(version: 6, l4: false).and match_packet(TestPackets::TEST_PACKET_IPV6_ETHERIP)
@@ -266,7 +290,7 @@ RSpec.describe Xlat::Rfc7915 do
     end
 
     context "with IPv4 Options" do
-      let!(:output) { translator.translate_to_ipv6(Xlat::Protocols::Ip.parse(TestPackets::TEST_PACKET_IPV4_OPTS_UDP.dup), 1500) }
+      let!(:output) { translator.translate_to_ipv6(parse_packet(TestPackets::TEST_PACKET_IPV4_OPTS_UDP.dup), 1500) }
 
       it "translates into ipv6" do
         expect(output).to have_correct_checksum(version: 6).and match_packet(TestPackets::TEST_PACKET_IPV6_UDP)
@@ -274,7 +298,7 @@ RSpec.describe Xlat::Rfc7915 do
     end
 
     context "with ICMP incomplete header" do
-      let!(:output) { translator.translate_to_ipv6(Xlat::Protocols::Ip.parse(TestPackets::TEST_PACKET_IPV4_ICMP_INCOMPLETE_HDR.dup), 1500) }
+      let!(:output) { translator.translate_to_ipv6(parse_packet(TestPackets::TEST_PACKET_IPV4_ICMP_INCOMPLETE_HDR.dup), 1500) }
 
       it "is discarded without error" do
         expect(output).to be_nil
