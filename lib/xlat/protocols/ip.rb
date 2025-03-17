@@ -136,10 +136,6 @@ module Xlat
         self
       end
 
-      def total_length
-        @l4_start + (@l4_bytes.size - @l4_bytes_offset)
-      end
-
       def tuple
         @version.tuple(@bytes, @bytes_offset)
       end
