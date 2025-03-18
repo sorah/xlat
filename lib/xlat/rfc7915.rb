@@ -67,7 +67,7 @@ module Xlat
       new_header_buffer.set_value(:U16, 2, ipv4_length)
 
       # Identification = generate
-      new_header_buffer.set_value(:U16, 4, make_fragment_id())
+      new_header_buffer.set_value(:U16, 4, ipv6_packet.identification || make_fragment_id())
 
       # TTL = copy from IPv6
       new_header_buffer.set_value(:U8, 8, ipv6_bytes.get_value(:U8, ipv6_bytes_offset + 7))
@@ -82,6 +82,9 @@ module Xlat
 
       # TODO: DF bit
       # TODO: discard if expired source route option is present
+
+      # TODO: fragmentation
+      return return_buffer_ownership() if ipv6_packet.fragment_offset
 
       if ipv6_packet.proto == 58 # icmpv6
         icmp_result, icmp_output = translate_icmpv6_to_icmpv4(ipv6_packet, new_header_buffer, max_length - 20)
@@ -158,6 +161,9 @@ module Xlat
       cs_delta_a = @destination_address_translator.translate_address_to_ipv6(ipv4_bytes.slice(ipv4_bytes_offset + 12,4), new_header_buffer, 8) or return return_buffer_ownership()
       cs_delta_b = @source_address_translator.translate_address_to_ipv6(ipv4_bytes.slice(ipv4_bytes_offset + 16,4), new_header_buffer, 24) or return return_buffer_ownership()
       cs_delta += cs_delta_a + cs_delta_b
+
+      # TODO: fragmentation
+      return return_buffer_ownership() if ipv4_packet.fragment_offset
 
       if ipv4_packet.proto == 1 # icmpv4
         icmp_result, icmp_output = translate_icmpv4_to_icmpv6(ipv4_packet, new_header_buffer, max_length - 40)

@@ -50,9 +50,9 @@ RSpec.describe Xlat::Rfc7915 do
 
   describe "meta" do
     TestPackets.constants.grep(/TEST_PACKET_/).uniq.each do |test_packet_const_name|
-      version = test_packet_const_name.to_s.include?('IPV4') ? 4 : 6
-      l4cksum = test_packet_const_name.to_s.match?(/_TRUE_|DNS|ICMP|TCP|UDP/i)
       bytes = TestPackets.const_get(test_packet_const_name)
+      version = test_packet_const_name.to_s.include?('IPV4') ? 4 : 6
+      l4cksum = test_packet_const_name.to_s.match?(/_TRUE_|DNS|ICMP|TCP|UDP/i) && !bytes.respond_to?(:__no_l4_checksum)
       describe test_packet_const_name do
         it do
           expect([bytes]).to have_correct_checksum(version:, l4: l4cksum)

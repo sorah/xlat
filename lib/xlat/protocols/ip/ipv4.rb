@@ -74,11 +74,18 @@ module Xlat
           return false if total_length < header_length
           return false unless packet.set_l4_region(header_length, total_length - header_length)
 
-          # ignore identification
-          return false if bytes.get_value(:U16, offset + 6) & 0xbfff != 0 # discard fragments
+          packet.identification = bytes.get_value(:U16, offset + 4)
 
-          proto = bytes.get_value(:U8, offset + 9)
-          packet.proto = proto
+          flags_offset = bytes.get_value(:U16, offset + 6)  # reserved:1, DF:1, MF:1, offset:13
+          fragment_offset = flags_offset & 0x1fff
+          more_fragments = (flags_offset & 0x2000) != 0
+          if fragment_offset != 0 || more_fragments
+            packet.fragment_offset = fragment_offset
+            packet.more_fragments = more_fragments
+          end
+          packet.dont_fragment = (flags_offset & 0x4000) != 0
+
+          packet.proto = bytes.get_value(:U8, offset + 9)
 
           true
         end
