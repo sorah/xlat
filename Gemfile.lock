@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    xlat (0.1.0)
+    xlat (0.1.0.alpha1)
       rb_sys (~> 0.9.102)
 
 GEM
