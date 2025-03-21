@@ -155,6 +155,129 @@ module TestPackets
     %w(af),
   ]
 
+  TEST_PACKET_IPV4_FRAG_ORIGINAL = buffer [
+    # ipv4
+    %w(45 00),
+    %w(06 5c), # total length (20+8+1600=1628)
+    %w(c3 98), # identification
+    %w(00 00), # flags
+    %w(40), # ttl
+    %w(11), # protocol
+    %w(2c e9), # checksum
+    %w(c0 00 02 07), # src
+    %w(c0 00 02 08), # dst
+
+    # udp
+    %w(c1 5b), # src port
+    %w(00 35), # dst port
+    %w(06 48), # length (1608)
+    %w(67 77), # checksum
+
+    # payload
+    %w(de ad be ef) * (1600 / 4),
+  ]
+  TEST_PACKET_IPV4_FRAG_UDP_0_1472 = buffer [
+    # ipv4
+    %w(45 00),
+    %w(05 dc), # total length (20+8+1472=1500)
+    %w(c3 98), # identification
+    %w(20 00), # flags (MF)
+    %w(40), # ttl
+    %w(11), # protocol
+    %w(0d 69), # checksum
+    %w(c0 00 02 07), # src
+    %w(c0 00 02 08), # dst
+
+    # udp
+    %w(c1 5b), # src port
+    %w(00 35), # dst port
+    %w(06 48), # length (1608)
+    %w(67 77), # checksum
+
+    # payload
+    %w(de ad be ef) * (1472 / 4),
+  ]
+  def TEST_PACKET_IPV4_FRAG_UDP_0_1472.__no_l4_checksum = true
+  TEST_PACKET_IPV4_FRAG_UDP_1472_1600 = buffer [
+    # ipv4
+    %w(45 00),
+    %w(00 94), # total length (20+128=148)
+    %w(c3 98), # identification
+    %w(00 b9), # flags / offset (1480/8=185)
+    %w(40), # ttl
+    %w(11), # protocol
+    %w(31 f8), # checksum
+    %w(c0 00 02 07), # src
+    %w(c0 00 02 08), # dst
+
+    # udp payload (cont.)
+    %w(de ad be ef) * (128 / 4),
+  ]
+  def TEST_PACKET_IPV4_FRAG_UDP_1472_1600.__no_l4_checksum = true
+
+  TEST_PACKET_IPV6_FRAG_ORIGINAL = buffer [
+    # ipv6
+    %w(60 00 00 00), # version, qos, flow label
+    %w(06 48), # payload length (8+1600=1608)
+    %w(11), # next header
+    %w(40), # hop limit
+    %w(20 01 0d b8 00 60 00 00 00 00 00 00 c0 00 02 07), # src
+    %w(20 01 0d b8 00 64 00 00 00 00 00 00 c0 00 02 08), # dst
+
+    # udp
+    %w(c1 5b), # src port
+    %w(00 35), # dst port
+    %w(06 48), # length (1608)
+    %w(0b 41), # checksum
+
+    # payload
+    %w(de ad be ef) * (1600 / 4),
+  ]
+  TEST_PACKET_IPV6_FRAG_UDP_0_1440 = buffer [
+    # ipv6
+    %w(60 00 00 00), # version, qos, flow label
+    %w(05 b0), # payload length (8+8+1440=1456)
+    %w(2c), # next header
+    %w(40), # hop limit
+    %w(20 01 0d b8 00 60 00 00 00 00 00 00 c0 00 02 07), # src
+    %w(20 01 0d b8 00 64 00 00 00 00 00 00 c0 00 02 08), # dst
+
+    # ipv6-frag
+    %w(11), # next header (udp)
+    %w(00), # reserved
+    %w(00 01), # fragment offset (0) / flags (M)
+    %w(00 00 c3 98), # identification
+
+    # udp
+    %w(c1 5b), # src port
+    %w(00 35), # dst port
+    %w(06 48), # length (1608)
+    %w(0b 41), # checksum
+
+    # payload
+    %w(de ad be ef) * (1440 / 4),
+  ]
+  def TEST_PACKET_IPV6_FRAG_UDP_0_1440.__no_l4_checksum = true
+  TEST_PACKET_IPV6_FRAG_UDP_1440_1600 = buffer [
+    # ipv6
+    %w(60 00 00 00), # version, qos, flow label
+    %w(00 a8), # payload length (8+160=168)
+    %w(2c), # next header
+    %w(40), # hop limit
+    %w(20 01 0d b8 00 60 00 00 00 00 00 00 c0 00 02 07), # src
+    %w(20 01 0d b8 00 64 00 00 00 00 00 00 c0 00 02 08), # dst
+
+    # ipv6-frag
+    %w(11), # next header (udp)
+    %w(00), # reserved
+    %w(05 a8), # fragment offset (1448/8=181) / flags
+    %w(00 00 c3 98), # identification
+
+    # udp payload (cont.)
+    %w(de ad be ef) * (160 / 4),
+  ]
+  def TEST_PACKET_IPV6_FRAG_UDP_1440_1600.__no_l4_checksum = true
+
   TEST_PACKET_IPV4_ICMP_ECHO = buffer [
     # ipv4
     %w(45 00),

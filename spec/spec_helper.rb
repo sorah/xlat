@@ -90,6 +90,7 @@ RSpec::Matchers.define :have_correct_checksum do |version:, l4: true|
       raise 'unexpected IP version'
     end
 
+    fragment = false
     case version
     when 4
       l4proto = packet.get_value(:U8, 9)
@@ -98,6 +99,7 @@ RSpec::Matchers.define :have_correct_checksum do |version:, l4: true|
       unless Xlat::Protocols::Ip.checksum(packet.slice(0, l4offset)) == 0
         raise 'incorrect IPv4 checksum'
       end
+      fragment = (packet.get_value(:U16, 6) & 0x3fff) != 0
     when 6
       l4proto = packet.get_value(:U8, 6)
       l4offset = 40
@@ -109,6 +111,7 @@ RSpec::Matchers.define :have_correct_checksum do |version:, l4: true|
         when 44  # Fragment
           l4proto = packet.get_value(:U8, l4offset)
           l4offset += 8
+          fragment = true
         when 51  # AH
           l4proto = packet.get_value(:U8, l4offset)
           l4offset += packet.get_value(:U8, l4offset + 1) * 4 + 8
@@ -123,6 +126,11 @@ RSpec::Matchers.define :have_correct_checksum do |version:, l4: true|
 
     if l4offset + l4length != packet.size
       raise 'wrong packet length in L3 header'
+    end
+
+    if fragment
+      raise 'L4 checksum requested but not supported for fragmented packets' if l4
+      return true
     end
 
     pseudo_header = [
@@ -141,7 +149,7 @@ RSpec::Matchers.define :have_correct_checksum do |version:, l4: true|
         raise 'incorrect L4 checksum'
       end
     else
-      raise 'L4 checksum requested but not supported' if l4
+      raise "L4 checksum requested but not supported for this L4 protocol: #{l4proto}" if l4
     end
 
     true

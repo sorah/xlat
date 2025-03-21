@@ -94,14 +94,22 @@ module Xlat
             # TODO: Routing header
           end
 
-          if proto == 51  # AH
-            # AH has a non-standard EH format. It doesn't work with NAT anyway.
-            return false
+          if proto == 44  # Fragment
+            extension_start = 40 + extensions_length
+            return false if extension_start + 8 > bytes_length
+
+            offset_flags = bytes.get_value(:U16, offset + extension_start + 2)  # offset:13, reserved:2, M:1
+            packet.fragment_offset = (offset_flags & 0xfff8) >> 3
+            packet.more_fragments = (offset_flags & 0x0001) != 0
+            packet.identification = bytes.get_value(:U16, offset + extension_start + 6)
+
+            proto = bytes.get_value(:U8, offset + extension_start)
+            extensions_length += 8  # Fragment EH is 8 bytes long
           end
 
           # We assume Fragment is at the last of EH chain.
-          if proto == 44  # Fragment
-            # TODO: handle fragmentation
+          # AH has a non-standard EH format. It doesn't work with NAT anyway.
+          if EXTENSIONS[proto] || proto == 44 || proto == 51  # 44=Fragment, 51=AH
             return false
           end
 

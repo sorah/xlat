@@ -36,6 +36,10 @@ module Xlat
       attr_accessor :l4_bytes  # IO::Buffer containing L4 packet
       attr_accessor :l4_bytes_offset  # Offset where L4 header begins within `l4_bytes`
       attr_accessor :l4_bytes_length  # Length of L4 datagram within `l4_bytes`, possibly truncated
+      attr_accessor :identification  # 16-bit identification if present
+      attr_accessor :fragment_offset  # Fragment offset (number of 8-byte units) -- takes nil if the packet is not fragmented
+      attr_accessor :more_fragments  # More fragments flag -- takes nil if the packet is not fragmented
+      attr_accessor :dont_fragment  # Don't fragment flag -- takes nil if the packet is IPv6
       attr_accessor :cs_delta  # Accumulated changes to be applied to L4 checksum
 
       attr_reader :version
@@ -62,6 +66,10 @@ module Xlat
         @l4_bytes = l4_bytes
         @l4_bytes_offset = l4_bytes_offset
         @l4_bytes_length = nil
+        @identification = nil
+        @fragment_offset = nil
+        @more_fragments = nil
+        @dont_fragment = nil
         @cs_delta = 0
 
         # mimimum size for IPv4
@@ -79,13 +87,15 @@ module Xlat
 
         return nil unless @version.parse(self, b0)
 
-        case @proto
-        when Protocols::Udp::PROTOCOL_ID
-          @l4 = @_udp.parse
-        when Protocols::Tcp::PROTOCOL_ID
-          @l4 = @_tcp.parse
-        when @version.icmp_protocol_id
-          @l4 = Protocols::Icmp.parse(self)
+        if @fragment_offset.nil? || @fragment_offset == 0
+          case @proto
+          when Protocols::Udp::PROTOCOL_ID
+            return unless @l4 = @_udp.parse
+          when Protocols::Tcp::PROTOCOL_ID
+            return unless @l4 = @_tcp.parse
+          when @version.icmp_protocol_id
+            return unless @l4 = Protocols::Icmp.parse(self)
+          end
         end
 
         self
