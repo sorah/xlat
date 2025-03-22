@@ -7,36 +7,36 @@ require_relative 'test_packets'
 
 RSpec.describe Xlat::Rfc7915 do
   module MockAddrTranslator
-    def self.translate_address_to_ipv4(ipv6_address,buffer,offset = 0)
-      case IPAddr.new_ntoh(ipv6_address.get_string).to_s
+    def self.translate_address_to_ipv4(source, source_offset, destination, destination_offset)
+      case IPAddr.new_ntoh(source.get_string(source_offset, 16)).to_s
       when IPAddr.new('64:ff9b:1:fffe::192.0.2.2').to_s
-        buffer.copy(IO::Buffer.for(IPAddr.new('192.0.2.2').hton), offset)
+        destination.copy(IO::Buffer.for(IPAddr.new('192.0.2.2').hton), destination_offset)
         0
       when IPAddr.new('64:ff9b::192.0.2.3').to_s
-        buffer.copy(IO::Buffer.for(IPAddr.new('192.0.2.3').hton), offset)
+        destination.copy(IO::Buffer.for(IPAddr.new('192.0.2.3').hton), destination_offset)
         0
       when IPAddr.new('2001:db8:60::192.0.2.7').to_s
-        buffer.copy(IO::Buffer.for(IPAddr.new('192.0.2.7').hton), offset)
+        destination.copy(IO::Buffer.for(IPAddr.new('192.0.2.7').hton), destination_offset)
         -(0x2001 + 0x0db8 + 0x0060)
       when IPAddr.new('2001:db8:64::192.0.2.8').to_s
-        buffer.copy(IO::Buffer.for(IPAddr.new('192.0.2.8').hton), offset)
+        destination.copy(IO::Buffer.for(IPAddr.new('192.0.2.8').hton), destination_offset)
         -(0x2001 + 0x0db8 + 0x0064)
       end
     end
 
-    def self.translate_address_to_ipv6(ipv4_address,buffer,offset = 0)
-      case IPAddr.new_ntoh(ipv4_address.get_string).to_s
+    def self.translate_address_to_ipv6(source, source_offset, destination, destination_offset)
+      case IPAddr.new_ntoh(source.get_string(source_offset, 4)).to_s
       when '192.0.2.2'
-        buffer.copy(IO::Buffer.for(IPAddr.new('64:ff9b:1:fffe::192.0.2.2').hton), offset)
+        destination.copy(IO::Buffer.for(IPAddr.new('64:ff9b:1:fffe::192.0.2.2').hton), destination_offset)
         0
       when '192.0.2.3'
-        buffer.copy(IO::Buffer.for(IPAddr.new('64:ff9b::192.0.2.3').hton), offset)
+        destination.copy(IO::Buffer.for(IPAddr.new('64:ff9b::192.0.2.3').hton), destination_offset)
         0
       when '192.0.2.7'
-        buffer.copy(IO::Buffer.for(IPAddr.new('2001:db8:60::192.0.2.7').hton), offset)
+        destination.copy(IO::Buffer.for(IPAddr.new('2001:db8:60::192.0.2.7').hton), destination_offset)
         (0x2001 + 0x0db8 + 0x0060)
       when '192.0.2.8'
-        buffer.copy(IO::Buffer.for(IPAddr.new('2001:db8:64::192.0.2.8').hton), offset)
+        destination.copy(IO::Buffer.for(IPAddr.new('2001:db8:64::192.0.2.8').hton), destination_offset)
         (0x2001 + 0x0db8 + 0x0064)
       end
     end
