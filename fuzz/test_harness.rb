@@ -14,7 +14,7 @@ def fuzzing_target(input)
   buffer = IO::Buffer.new(input.bytesize)
   buffer.set_string(input)
   pkt = Xlat::Protocols::Ip.parse(buffer)
-  return unless pkt
+  return false unless pkt
 
   case pkt.version.to_i
   when 4
@@ -25,7 +25,7 @@ def fuzzing_target(input)
     fail 'unknown IP version'
   end
 
-  return output
+  return true
 ensure
   @xlat.return_buffer_ownership
 end
