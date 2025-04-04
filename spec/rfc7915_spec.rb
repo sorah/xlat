@@ -86,6 +86,24 @@ RSpec.describe Xlat::Rfc7915 do
       end
     end
 
+    context "with fragmentation" do
+      context "head fragment" do
+        let!(:output) { translator.translate_to_ipv4(parse_packet(TestPackets::TEST_PACKET_IPV6_FRAG_UDP_0_1440.dup), 1500) }
+
+        it "translates into ipv4" do
+          expect(output).to have_correct_checksum(version: 4, l4: false).and match_packet(TestPackets::TEST_PACKET_IPV4_FRAG_UDP_0_1440)
+        end
+      end
+
+      context "tail fragment" do
+        let!(:output) { translator.translate_to_ipv4(parse_packet(TestPackets::TEST_PACKET_IPV6_FRAG_UDP_1440_1600.dup), 1500) }
+
+        it "translates into ipv4" do
+          expect(output).to have_correct_checksum(version: 4, l4: false).and match_packet(TestPackets::TEST_PACKET_IPV4_FRAG_UDP_1440_1600)
+        end
+      end
+    end
+
     context "with icmp echo" do
       let!(:output) { translator.translate_to_ipv4(parse_packet(TestPackets::TEST_PACKET_IPV6_ICMP_ECHO.dup), 1500) }
 
@@ -130,7 +148,7 @@ RSpec.describe Xlat::Rfc7915 do
       let!(:output) { translator.translate_to_ipv4(parse_packet(TestPackets::TEST_PACKET_IPV6_ICMP_FRAG_PAYLOAD.dup), 1500) }
 
       it "translates into ipv4" do
-        expect(output).to be_nil  # Though we don't support fragments yet, it should not raise
+        expect(output).to have_correct_checksum(version: 4).and match_packet(TestPackets::TEST_PACKET_IPV4_ICMP_FRAG_PAYLOAD)
       end
     end
 
