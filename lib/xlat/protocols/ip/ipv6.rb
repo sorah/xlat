@@ -76,6 +76,11 @@ module Xlat
           payload_length = bytes.get_value(:U16, offset + 4)
           proto = bytes.get_value(:U8, offset + 6)
 
+          # Minimum of the datagram length indicated by the IPv6 header,
+          # and the length from the lower-layer protocol.
+          # The datagram may be truncated or have some trailer.
+          data_available = [40 + payload_length, bytes_length].min
+
           # [draft-ietf-6man-eh-limits-19] Section 4 suggests IPv6 nodes
           # to process at least 64 bytes long chain of EHs.
           extensions_length_limit = [payload_length, 64].min
@@ -83,7 +88,7 @@ module Xlat
 
           while EXTENSIONS[proto]
             extension_start = 40 + extensions_length
-            return false if extension_start + 8 > bytes_length  # EH is at least 8 byte long
+            return false if extension_start + 8 > data_available  # EH is at least 8 byte long
 
             proto = bytes.get_value(:U8, offset + extension_start)
             length = bytes.get_value(:U8, offset + extension_start + 1) * 8 + 8
@@ -96,7 +101,7 @@ module Xlat
 
           if proto == 44  # Fragment
             extension_start = 40 + extensions_length
-            return false if extension_start + 8 > bytes_length
+            return false if extension_start + 8 > data_available
 
             offset_flags = bytes.get_value(:U16, offset + extension_start + 2)  # offset:13, reserved:2, M:1
             packet.fragment_offset = (offset_flags & 0xfff8) >> 3
