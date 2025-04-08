@@ -1,3 +1,4 @@
+#!/usr/bin/env ruby
 require_relative '../spec/test_packets.rb'
 require 'digest/sha1'
 require 'pathname'
