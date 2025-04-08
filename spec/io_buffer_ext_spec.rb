@@ -99,3 +99,67 @@ RSpec.describe Xlat::IOBufferExt do
     end
   end
 end
+
+RSpec.describe Xlat::IOBufferExt::Compare do
+  describe '#compare' do
+    context 'when buffers are equal' do
+      it 'returns 0' do
+        buf1 = IO::Buffer.for('0123')
+        buf2 = IO::Buffer.for('0123')
+        expect(buf1.compare(buf2)).to eq 0
+      end
+    end
+
+    context 'when buffers are not equal (less)' do
+      it 'returns -1' do
+        buf1 = IO::Buffer.for('0123')
+        buf2 = IO::Buffer.for('0124')
+        expect(buf1.compare(buf2)).to eq -1
+      end
+    end
+
+    context 'when buffers are not equal (greater)' do
+      it 'returns -1' do
+        buf1 = IO::Buffer.for('0124')
+        buf2 = IO::Buffer.for('0123')
+        expect(buf1.compare(buf2)).to eq 1
+      end
+    end
+
+    context 'when the other buffer is smaller' do
+      it 'returns 1' do
+        buf1 = IO::Buffer.for('0123')
+        buf2 = IO::Buffer.for('012')
+        expect { buf1.compare(buf2) }.to raise_error(ArgumentError)
+      end
+    end
+
+    context 'with offset' do
+      context 'when buffers are equal' do
+        it 'returns 0' do
+          buf1 = IO::Buffer.for('0123')
+          buf2 = IO::Buffer.for('123')
+          expect(buf1.compare(buf2, 1)).to eq 0
+        end
+      end
+    end
+
+    context 'with offset/length/other_offset' do
+      context 'when buffers are equal' do
+        it 'returns 0' do
+          buf1 = IO::Buffer.for('012345678')
+          buf2 = IO::Buffer.for('991234999')
+          expect(buf1.compare(buf2, 1, 4, 2)).to eq 0
+        end
+      end
+
+      context 'when buffers are not equal (less)' do
+        it 'returns -1' do
+          buf1 = IO::Buffer.for('012345678')
+          buf2 = IO::Buffer.for('991234999')
+          expect(buf1.compare(buf2, 1, 5, 2)).to eq -1
+        end
+      end
+    end
+  end
+end
