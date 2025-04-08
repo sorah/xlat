@@ -215,6 +215,45 @@ module TestPackets
   ]
   def TEST_PACKET_IPV4_FRAG_UDP_1472_1600.__no_l4_checksum = true
 
+  TEST_PACKET_IPV4_FRAG_UDP_0_1440 = buffer [
+    # ipv4
+    %w(45 00),
+    %w(05 bc), # total length (20+8+1440=1468)
+    %w(c3 98), # identification
+    %w(20 00), # flags (MF)
+    %w(40), # ttl
+    %w(11), # protocol
+    %w(0d 89), # checksum
+    %w(c0 00 02 07), # src
+    %w(c0 00 02 08), # dst
+
+    # udp
+    %w(c1 5b), # src port
+    %w(00 35), # dst port
+    %w(06 48), # length (1608)
+    %w(67 77), # checksum
+
+    # payload
+    %w(de ad be ef) * (1440 / 4),
+  ]
+  def TEST_PACKET_IPV4_FRAG_UDP_0_1440.__no_l4_checksum = true
+  TEST_PACKET_IPV4_FRAG_UDP_1440_1600 = buffer [
+    # ipv4
+    %w(45 00),
+    %w(00 b4), # total length (20+160=180)
+    %w(c3 98), # identification
+    %w(00 b5), # flags / offset (1448/8=181)
+    %w(40), # ttl
+    %w(11), # protocol
+    %w(31 dc), # checksum
+    %w(c0 00 02 07), # src
+    %w(c0 00 02 08), # dst
+
+    # udp payload (cont.)
+    %w(de ad be ef) * (160 / 4),
+  ]
+  def TEST_PACKET_IPV4_FRAG_UDP_1440_1600.__no_l4_checksum = true
+
   TEST_PACKET_IPV6_FRAG_ORIGINAL = buffer [
     # ipv6
     %w(60 00 00 00), # version, qos, flow label
