@@ -32,7 +32,7 @@ TODO: Write usage instructions here
 ## Caveats
 
 - Expecting no difference in IPv4 and IPv6 MTU
-- Fragmented packets are silently discarded
+- If an IPv4 packet is translated into an IPv6 packet larger than MTU, the packet is silently discarded.
 
 ## Tips
 
