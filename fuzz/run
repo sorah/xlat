@@ -4,7 +4,7 @@ if ! bundle exec ruby -e 'exit(RbConfig::CONFIG["CC"] =~ /\Aclang/ ? 0 : 1)'; th
   echo "!! Ruby needs to be built with clang !!" >&2
 fi
 
-bundle install --with=fuzz
+export BUNDLE_WITH=fuzz
 
 export ASAN_OPTIONS="allocator_may_return_null=1:detect_leaks=0:use_sigaltstack=0"
 
