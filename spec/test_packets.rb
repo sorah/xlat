@@ -557,8 +557,9 @@ module TestPackets
 
     # icmp
     %w(03 04), # type=3,code=4 (packet too big)
-    %w(0a ba), # checksum
-    %w(00 00 05 c8), # mtu
+    %w(10 82), # checksum
+    %w(00 00), # reserved
+    %w(00 00), # mtu, to be filled
 
     # payload ipv4
     %w(45 00),
@@ -580,6 +581,57 @@ module TestPackets
     # payload
     %w(af),
   ]
+  def TEST_PACKET_IPV4_ICMP_MTU.with_mtu(mtu)
+    dup.tap do |pkt|
+      pkt.set_value(:U16, 20+2, Xlat::Protocols::Ip.checksum_adjust(pkt.get_value(:U16, 20+2), mtu))
+      pkt.set_value(:U16, 20+6, mtu)
+    end
+  end
+
+  TEST_PACKET_IPV4_ICMP_MTU_FRAG_PAYLOAD = buffer [
+    # ipv4
+    %w(45 00),
+    %w(00 39), # total length (20+8+20+8+1=57)
+    %w(c3 98), # identification
+    %w(00 00), # flags
+    %w(40), # ttl
+    %w(01), # protocol
+    %w(33 1c), # checksum
+    %w(c0 00 02 07), # src
+    %w(c0 00 02 08), # dst
+
+    # icmp
+    %w(03 04), # type=3,code=4 (packet too big)
+    %w(10 82), # checksum
+    %w(00 00), # reserved
+    %w(00 00), # mtu, to be filled
+
+    # payload ipv4
+    %w(45 00),
+    %w(00 1d), # total length (20+8+1=29)
+    %w(c3 98), # identification
+    %w(20 00), # flags (MF)
+    %w(40), # ttl
+    %w(11), # protocol
+    %w(13 32), # checksum
+    %w(c0 00 02 02), # src
+    %w(c0 00 02 03), # dst
+
+    # payload udp
+    %w(c1 5b), # src port
+    %w(00 35), # dst port
+    %w(10 00), # length
+    %w(6b e8), # checksum
+
+    # payload
+    %w(af), # truncated
+  ]
+  def TEST_PACKET_IPV4_ICMP_MTU_FRAG_PAYLOAD.with_mtu(mtu)
+    dup.tap do |pkt|
+      pkt.set_value(:U16, 20+2, Xlat::Protocols::Ip.checksum_adjust(pkt.get_value(:U16, 20+2), mtu))
+      pkt.set_value(:U16, 20+6, mtu)
+    end
+  end
 
   TEST_PACKET_IPV6_ICMP_MTU = buffer [
     # ipv6
@@ -592,8 +644,8 @@ module TestPackets
 
     # icmp
     %w(02 00), # type=2,code=0 (packet too big)
-    %w(35 a0), # checksum
-    %w(ff ff 05 dc), # mtu
+    %w(3b 7c), # checksum
+    %w(00 00 00 00), # mtu, to be filled
 
     # ipv6
     %w(60 00 00 00), # version, qos, flow label
@@ -612,6 +664,56 @@ module TestPackets
     # payload
     %w(af),
   ]
+  def TEST_PACKET_IPV6_ICMP_MTU.with_mtu(mtu)
+    dup.tap do |pkt|
+      pkt.set_value(:U16, 40+2, Xlat::Protocols::Ip.checksum_adjust(pkt.get_value(:U16, 40+2), mtu))
+      pkt.set_value(:U32, 40+4, mtu)
+    end
+  end
+
+  TEST_PACKET_IPV6_ICMP_MTU_FRAG_PAYLOAD = buffer [
+    # ipv6
+    %w(60 00 00 00), # version, qos, flow label
+    %w(00 41), # payload length (8+40+8+8+1=65)
+    %w(3a), # next header
+    %w(40), # hop limit
+    %w(20 01 0d b8 00 60 00 00 00 00 00 00 c0 00 02 07), # src
+    %w(20 01 0d b8 00 64 00 00 00 00 00 00 c0 00 02 08), # dst
+
+    # icmp
+    %w(02 00), # type=2,code=0 (packet too big)
+    %w(4b d2), # checksum
+    %w(00 00 00 00), # mtu, to be filled
+
+    # ipv6
+    %w(60 00 00 00), # version, qos, flow label
+    %w(00 11), # payload length (8+8+1=17)
+    %w(2c), # next header
+    %w(40), # hop limit
+    %w(00 64 ff 9b 00 01 ff fe 00 00 00 00 c0 00 02 02), # src
+    %w(00 64 ff 9b 00 00 00 00 00 00 00 00 c0 00 02 03), # dst
+
+    # ipv6-frag
+    %w(11), # next header
+    %w(00), # reserved
+    %w(00 01), # offset (0), more fragments
+    %w(00 00 c3 98), # identification
+
+    # udp
+    %w(c1 5b), # src port
+    %w(00 35), # dst port
+    %w(10 00), # length
+    %w(6b e8), # checksum
+
+    # payload
+    %w(af),  # truncated
+  ]
+  def TEST_PACKET_IPV6_ICMP_MTU_FRAG_PAYLOAD.with_mtu(mtu)
+    dup.tap do |pkt|
+      pkt.set_value(:U16, 40+2, Xlat::Protocols::Ip.checksum_adjust(pkt.get_value(:U16, 40+2), mtu))
+      pkt.set_value(:U32, 40+4, mtu)
+    end
+  end
 
   TEST_PACKET_IPV4_ICMP_POINTER = buffer [
     # ipv4
