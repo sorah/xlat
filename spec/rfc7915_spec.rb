@@ -152,11 +152,42 @@ RSpec.describe Xlat::Rfc7915 do
       end
     end
 
-    context "with icmp mtu" do
-      let!(:output) { translator.translate_to_ipv4(parse_packet(TestPackets::TEST_PACKET_IPV6_ICMP_MTU.dup), 1500) }
+    context "icmp packet too big" do
+      context "with ipv6 mtu 1500" do
+        let!(:ipv6_icmp) { TestPackets::TEST_PACKET_IPV6_ICMP_MTU.with_mtu(1500) }
+        let!(:ipv4_icmp) { TestPackets::TEST_PACKET_IPV4_ICMP_MTU.with_mtu(1480) }
 
-      it "translates into ipv4" do
-        expect(output).to have_correct_checksum(version: 4).and match_packet(TestPackets::TEST_PACKET_IPV4_ICMP_MTU)
+        let!(:output) { translator.translate_to_ipv4(parse_packet(ipv6_icmp), 1500) }
+
+        it "translates into ipv4 fragmentation needed with mtu -20" do
+          expect([ipv6_icmp]).to have_correct_checksum(version: 6)
+          expect(output).to have_correct_checksum(version: 4).and match_packet(ipv4_icmp)
+        end
+      end
+
+      context "with ipv6 mtu > 0xffff" do
+        let!(:ipv6_icmp) { TestPackets::TEST_PACKET_IPV6_ICMP_MTU.with_mtu(78000) }
+        let!(:ipv4_icmp) { TestPackets::TEST_PACKET_IPV4_ICMP_MTU.with_mtu(65535) }
+
+        let!(:output) { translator.translate_to_ipv4(parse_packet(ipv6_icmp), 1500) }
+
+        # IPv4 MTU should be capped at 0xFFFF
+        it "translates into ipv4 fragmentation needed with mtu = 65535" do
+          expect([ipv6_icmp]).to have_correct_checksum(version: 6)
+          expect(output).to have_correct_checksum(version: 4).and match_packet(ipv4_icmp)
+        end
+      end
+
+      context 'with fragmented payload' do
+        let!(:ipv6_icmp) { TestPackets::TEST_PACKET_IPV6_ICMP_MTU_FRAG_PAYLOAD.with_mtu(1500) }
+        let!(:ipv4_icmp) { TestPackets::TEST_PACKET_IPV4_ICMP_MTU_FRAG_PAYLOAD.with_mtu(1472) }
+
+        let!(:output) { translator.translate_to_ipv4(parse_packet(ipv6_icmp), 1500) }
+
+        it "translates into ipv4 fragmentation needed with mtu -28" do
+          expect([ipv6_icmp]).to have_correct_checksum(version: 6)
+          expect(output).to have_correct_checksum(version: 4).and match_packet(ipv4_icmp)
+        end
       end
     end
 
@@ -292,16 +323,41 @@ RSpec.describe Xlat::Rfc7915 do
       end
     end
 
-    context "with icmp mtu" do
-      let!(:output) { translator.translate_to_ipv6(parse_packet(TestPackets::TEST_PACKET_IPV4_ICMP_MTU.dup), 1500) }
+    context "icmp fragmentation needed" do
+      context "with ipv4 mtu 1480" do
+        let!(:ipv4_icmp) { TestPackets::TEST_PACKET_IPV4_ICMP_MTU.with_mtu(1480) }
+        let!(:ipv6_icmp) { TestPackets::TEST_PACKET_IPV6_ICMP_MTU.with_mtu(1500) }
 
-      it "translates into ipv6" do
-        ipv6 = TestPackets::TEST_PACKET_IPV6_ICMP_MTU.dup
-        # clear first 2 octets from MTU field (32-bit number) contained in TEST_PACKET_IPV6_ICMP_MTU
-        # no checksum adjust as -0xffff keep checksum
-        ipv6.set_value(:U16, 44, 0)
+        let!(:output) { translator.translate_to_ipv6(parse_packet(ipv4_icmp), 1500) }
 
-        expect(output).to have_correct_checksum(version: 6).and match_packet(ipv6)
+        it "translates into ipv6 packet too big with mtu +20" do
+          expect([ipv4_icmp]).to have_correct_checksum(version: 4)
+          expect(output).to have_correct_checksum(version: 6).and match_packet(ipv6_icmp)
+        end
+      end
+
+      context "with ipv4 mtu 1280" do
+        let!(:ipv4_icmp) { TestPackets::TEST_PACKET_IPV4_ICMP_MTU.with_mtu(1200) }
+        let!(:ipv6_icmp) { TestPackets::TEST_PACKET_IPV6_ICMP_MTU.with_mtu(1280) }
+
+        let!(:output) { translator.translate_to_ipv6(parse_packet(ipv4_icmp), 1500) }
+
+        it "translates into ipv6 packet too big with mtu = 1280" do
+          expect([ipv4_icmp]).to have_correct_checksum(version: 4)
+          expect(output).to have_correct_checksum(version: 6).and match_packet(ipv6_icmp)
+        end
+      end
+
+      context 'with fragmented payload' do
+        let!(:ipv4_icmp) { TestPackets::TEST_PACKET_IPV4_ICMP_MTU_FRAG_PAYLOAD.with_mtu(1480) }
+        let!(:ipv6_icmp) { TestPackets::TEST_PACKET_IPV6_ICMP_MTU_FRAG_PAYLOAD.with_mtu(1500) }
+
+        let!(:output) { translator.translate_to_ipv6(parse_packet(ipv4_icmp), 1500) }
+
+        it "translates into ipv6 packet too big with mtu +20" do
+          expect([ipv4_icmp]).to have_correct_checksum(version: 4)
+          expect(output).to have_correct_checksum(version: 6).and match_packet(ipv6_icmp)
+        end
       end
     end
 

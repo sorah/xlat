@@ -402,10 +402,7 @@ module Xlat
         translate_payload = :error_payload_rfc4884
       when :mtu
         translate_payload = true
-        # https://datatracker.ietf.org/doc/html/rfc1191#section-4
-        mtu = l4_bytes.get_value(:U16, l4_bytes_offset+6)
-        l4_bytes.set_value(:U16, l4_bytes_offset+4, 0)
-        l4_bytes.set_value(:U16, l4_bytes_offset+6,mtu-20) # FIXME: not complete implementation
+        # the header will be updated after translating the payload
       when :pointer
         translate_payload = true
         ptr = l4_bytes.get_value(:U8, l4_bytes_offset+7)
@@ -469,11 +466,21 @@ module Xlat
 
         l4_length_changed = output.sum(&:size)
 
+        if payload_handler == :mtu
+          # https://datatracker.ietf.org/doc/html/rfc1191#section-4
+          ipv6_mtu = l4_bytes.get_value(:U32, l4_bytes_offset+4)
+          ipv4_mtu = ipv6_mtu - 20
+          ipv4_mtu -= 8 if original_datagram.fragment_offset  # For Fragment EH
+          ipv4_mtu = 0xFFFF if ipv4_mtu > 0xFFFF  # IPv4 MTU is 16-bit field
+
+          l4_bytes.set_value(:U16, l4_bytes_offset+4, 0)  # TODO: RFC4884 "original datagram" length
+          l4_bytes.set_value(:U16, l4_bytes_offset+6, ipv4_mtu)
+        end
+
         # Force recalculation of ICMP checksum
         l4_bytes.set_value(:U16, l4_bytes_offset+2,0)
         cksum = output ? Protocols::Ip.checksum_list(output) : Protocols::Ip.checksum(l4_bytes.slice(l4_bytes_offset))
         l4_bytes.set_value(:U16, l4_bytes_offset+2, cksum)
-
       else
         # For incremental checksum update, remove pseudo header from ICMP checksum
         cs_delta -= sum16be(ipv6_packet.tuple) + ipv6_packet.l4_length + 58
@@ -536,16 +543,9 @@ module Xlat
         translate_payload = true
       when :error_payload_rfc4884
         translate_payload = :error_payload_rfc4884
-
       when :mtu
-        translate_payload = true
-        # https://datatracker.ietf.org/doc/html/rfc1191#section-4
-        mtu = l4_bytes.get_value(:U16, l4_bytes_offset+6)
-        l4_bytes.set_value(:U16, l4_bytes_offset+4,0)
-        new_mtu = mtu+20 # FIXME: not complete implementation
-        new_mtu = 1280 if mtu < 1280
-        l4_bytes.set_value(:U16, l4_bytes_offset+6,new_mtu)
-
+        translate_payload = true  # TODO: ICMPv4 Fragmentation Needed can convey RFC4884 extensions
+        # the header will be updated after translating the payload
       when :pointer, :pointer_static_next_header
         translate_payload = true
         ptr = l4_bytes.get_value(:U8, l4_bytes_offset+4)
@@ -607,6 +607,16 @@ module Xlat
         end
 
         l4_length_changed = output.sum(&:size)
+
+        if payload_handler == :mtu
+          # https://datatracker.ietf.org/doc/html/rfc1191#section-4
+          # IPv4 MTU may be zero, which is translated to IPv6 MTU 1280 anyway.
+          ipv4_mtu = l4_bytes.get_value(:U16, l4_bytes_offset+6)
+          ipv6_mtu = ipv4_mtu + 20
+          ipv6_mtu = 1280 if ipv6_mtu < 1280  # IPv6 minimum MTU
+
+          l4_bytes.set_value(:U32, l4_bytes_offset+4, ipv6_mtu)
+        end
 
         # Force recalculation of ICMP checksum
         l4_bytes.set_value(:U16, l4_bytes_offset+2,0)
