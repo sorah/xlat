@@ -96,5 +96,6 @@ The gem is available as open source under the terms of the [MIT License](https:/
 ### Credits
 
 - Copyright (c) 2024 Sorah Fukumori
+- Copyright (c) 2024-2025 Kasumi Hanazuki
 - Copyright (c) 2022 Kazuho Oku
   - Some part of this source code are based on the source code at https://github.com/kazuho/rat available under MIT License
