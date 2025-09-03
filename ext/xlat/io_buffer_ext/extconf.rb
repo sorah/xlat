@@ -1,4 +1,9 @@
-require 'mkmf'
-require 'rb_sys/mkmf'
+require 'rcx/mkmf/c++20'
 
-create_rust_makefile('xlat/io_buffer_ext')
+$CXXFLAGS << ' -MJ$@.json' if checking_for('-MJ flag') { try_compile('', ' -MJtmp.json') }
+
+$CXXFLAGS << ' -Wall' if checking_for('-Wall flag') { try_compile('', ' -Wall') }
+$CXXFLAGS << ' -Wextra' if checking_for('-Wextra flag') { try_compile('', ' -Wextra') }
+
+create_header
+create_makefile('xlat/io_buffer_ext')

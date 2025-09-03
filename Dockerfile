@@ -6,7 +6,7 @@ FROM $RUBY_DEV AS build
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     apt-get update && \
-    apt-get install -y clang cargo
+    apt-get install -y clang cargo libffi-dev pkg-config
 
 WORKDIR /app
 COPY . .
