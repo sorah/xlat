@@ -30,7 +30,7 @@ Gem::Specification.new do |spec|
   spec.extensions = ["ext/xlat/io_buffer_ext/extconf.rb"]
 
   spec.add_dependency "logger"
-  spec.add_dependency "rb_sys", "~> 0.9.102"
+  spec.add_dependency "rcx", "~> 0.4.0"
 
   # For more information and examples about making a new gem, check out our
   # guide at: https://bundler.io/guides/creating_gem.html

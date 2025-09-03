@@ -74,10 +74,20 @@ RSpec.describe Xlat::IOBufferExt do
 
     context 'IO is closed' do
       it do
-        @r.close
+        @w.close
         expect {
           Xlat::IOBufferExt.writev(@w, [IO::Buffer.new(1)])
         }.to raise_error(IOError)
+      end
+    end
+
+    context 'syscall error' do
+      it do
+        @r.close
+        expect {
+          # The other side of the pipe is closed, so we get EPIPE
+          Xlat::IOBufferExt.writev(@w, [IO::Buffer.new(1)])
+        }.to raise_error(SystemCallError)
       end
     end
 

@@ -15,6 +15,12 @@ end
 
 task spec: :compile
 
+file 'compile_commands.json' => FileList['tmp/**/*.o.json'] do |t|
+  json = t.prerequisites.map { File.read(it).chomp }.join.chomp(?,)
+  json = "[#{json}]"
+  File.write(t.name, json)
+end
+task :compile => 'compile_commands.json'
 
 directory 'doc'
 

@@ -7,6 +7,8 @@
 /spec/reports/
 /target/
 /tmp/
+/vendor/bundle/
+/.cache/
 
 # rspec failure tracking
 .rspec_status
@@ -17,3 +19,6 @@
 # fuzz
 crash-*
 leak-*
+
+# clangd
+compile_commands.json
