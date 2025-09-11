@@ -2,24 +2,27 @@
 
 module Xlat
   module AddressTranslation
-    # Translate IPv6 address bytestring into IPv4 address and write to given buffer
-    # Must return true when translation took place
+    # Translate IPv6 address in the given IO::Buffer into IPv4 address and write to another IO::Buffer.
+    # Must return true when translation took place.
     #
-    # @param ipv6_address [IO::Buffer] IPv6 address buffer
-    # @param buffer [IO::Buffer] Destination packet buffer
-    # @param offset [Integer] Offset in buffer to write IPv6 address
+    # @param source [IO::Buffer] Buffer from which IPv6 address is read
+    # @param source_offset [Integer] Offset in the source IO::Buffer
+    # @param destination [IO::Buffer] Buffer into which IPv4 address is written
+    # @param destination_offset [Integer] Offset in the destination IO::Buffer
     # @return [Integer, nil] checksum delta value or nil when no translation took place
-    def translate_address_to_ipv4(ipv6_address,buffer,offset = 0)
+    def translate_address_to_ipv4(source, source_offset, destination, destination_offset)
       raise NotImplementedError
     end
 
-    # Translate IPv4 address bytestring into IPv6 address and write to given buffer
+    # Translate IPv4 address in the given IO::Buffer into IPv6 address and write to another IO::Buffer.
+    # Must return true when translation took place.
     #
-    # @param ipv4_address [IO::Buffer] IPv4 address buffer
-    # @param buffer [IO::Buffer] Destination packet buffer
-    # @param offset [Integer] Offset in buffer to write IPv4 address
+    # @param source [IO::Buffer] Buffer from which IPv4 address is read
+    # @param source_offset [Integer] Offset in the source IO::Buffer
+    # @param destination [IO::Buffer] Buffer into which IPv6 address is written
+    # @param destination_offset [Integer] Offset in the destination IO::Buffer
     # @return [Integer, nil] checksum delta value or nil when no translation took place
-    def translate_address_to_ipv6(ipv4_address,buffer,offset = 0)
+    def translate_address_to_ipv6(source, source_offset, destination, destination_offset)
       raise NotImplementedError
     end
 
