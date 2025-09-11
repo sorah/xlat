@@ -12,6 +12,8 @@ gem "pf2", "0.8.0"
 
 gem "rexml"
 
+gem "benchmark-ips"
+
 group :fuzz, optional: true do
   gem 'ruzzy'
 end
