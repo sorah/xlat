@@ -29,6 +29,11 @@ gem 'xlat'
 
 TODO: Write usage instructions here
 
+Example production deployments on RubyKaigi Wi-Fi is available at:
+
+- https://github.com/ruby-no-kai/rubykaigi-net/tree/master/itamae/roles/plat
+- https://github.com/ruby-no-kai/rubykaigi-net/tree/master/itamae/hosts/nat-61.venue.rubykaigi.net
+
 ## Caveats
 
 - Expecting no difference in IPv4 and IPv6 MTU
