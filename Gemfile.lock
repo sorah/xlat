@@ -3,7 +3,7 @@ PATH
   specs:
     xlat (0.1.0.alpha1)
       logger
-      rcx (~> 0.4.0)
+      rcx (~> 0.4.2)
 
 GEM
   remote: https://rubygems.org/
@@ -18,8 +18,7 @@ GEM
     rake (13.2.1)
     rake-compiler (1.2.9)
       rake
-    rb_sys (0.9.105)
-    rcx (0.4.0)
+    rcx (0.4.2)
       shellwords (~> 0.2)
     rexml (3.4.0)
     rspec (3.13.0)
