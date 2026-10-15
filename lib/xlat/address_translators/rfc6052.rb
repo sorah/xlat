@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 require 'xlat/address_translation'
-require 'xlat/io_buffer_ext'
 require 'xlat/common'
 require 'ipaddr'
 
