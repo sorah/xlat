@@ -8,11 +8,12 @@ gemspec
 gem "rake", "~> 13.0"
 gem "rake-compiler", "~> 1.2"
 gem "rspec", "~> 3.0"
-gem "pf2", "0.8.0"
+#gem "pf2", "0.8.0"
 
 gem "rexml"
 
-gem "benchmark-ips"
+gem "benchmark"
+gem "benchmark_driver"
 
 group :fuzz, optional: true do
   gem 'ruzzy'

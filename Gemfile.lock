@@ -3,23 +3,19 @@ PATH
   specs:
     xlat (0.1.0.alpha1)
       logger
-      rcx (~> 0.4.0)
+      rcx (~> 0.4.2)
 
 GEM
   remote: https://rubygems.org/
   specs:
-    benchmark-ips (2.14.0)
+    benchmark (0.5.0)
+    benchmark_driver (0.17.0)
     diff-lcs (1.5.1)
     logger (1.7.0)
-    pf2 (0.8.0)
-      rake-compiler
-      rb_sys (= 0.9.105)
-      webrick
     rake (13.2.1)
     rake-compiler (1.2.9)
       rake
-    rb_sys (0.9.105)
-    rcx (0.4.0)
+    rcx (0.4.2)
       shellwords (~> 0.2)
     rexml (3.4.0)
     rspec (3.13.0)
@@ -37,14 +33,13 @@ GEM
     rspec-support (3.13.2)
     ruzzy (0.7.0)
     shellwords (0.2.2)
-    webrick (1.9.1)
 
 PLATFORMS
   ruby
 
 DEPENDENCIES
-  benchmark-ips
-  pf2 (= 0.8.0)
+  benchmark
+  benchmark_driver
   rake (~> 13.0)
   rake-compiler (~> 1.2)
   rexml
@@ -53,4 +48,4 @@ DEPENDENCIES
   xlat!
 
 BUNDLED WITH
-   2.4.22
+  4.1.0.beta1
